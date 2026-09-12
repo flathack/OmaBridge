@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.4.2 — 2026-09-12
+
+- Stabile Bar-Anzeige beim Polling: kein sekündlicher Wechsel zu „Laden“ und kein springendes Eingabefeld.
+- Unveränderte Site-Listen werden nicht mehr bei jeder Abfrage neu aufgebaut.
+- Hintergrundstart hält die Antwort-Pipe des Entsperrhelfers nicht mehr offen.
+- Socket-Timeouts werden beim Schließen der Verbindung mit aufgeräumt.
+
 ## 0.4.1 — 2026-09-12
 
 - PIN-/Passworteingabe direkt im Bar-Popup; danach Sites sofort auswählen und starten.

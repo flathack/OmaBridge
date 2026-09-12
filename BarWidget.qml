@@ -15,6 +15,7 @@ Ui.BarWidget {
     property string loadError: ""
     property string unlockError: ""
     property bool locked: false
+    property bool stateLoaded: false
     property string language: "en"
     readonly property string launcher: Quickshell.env("HOME") + "/.local/bin/omabridge"
     function t(english, german) { return root.language === "de" ? german : english }
@@ -29,9 +30,12 @@ Ui.BarWidget {
     function close() { popupOpen = false }
     function applyState(parsed) {
         if (!Array.isArray(parsed.sites) || typeof parsed.locked !== "boolean") throw new Error("Invalid state")
+        stateLoaded = true
         language = parsed.language === "de" ? "de" : "en"
         locked = parsed.locked
-        sites = locked ? [] : parsed.sites
+        const nextSites = locked ? [] : parsed.sites
+        if (JSON.stringify(sites) !== JSON.stringify(nextSites)) sites = nextSites
+        loadError = ""
         if (!locked) unlockError = ""
     }
     function unlock() {
@@ -53,7 +57,6 @@ Ui.BarWidget {
     }
     function refreshSites() {
         if (!reader.running && !unlocker.running) {
-            loadError = ""
             reader.running = true
         }
     }
@@ -152,9 +155,10 @@ Ui.BarWidget {
                 font.bold: true
             }
             Text {
+                id: stateHint
                 width: parent.width
                 visible: root.loadError !== "" || root.sites.length === 0
-                text: root.loadError || (reader.running ? root.t("Loading sites …", "Sites laden …") : root.locked ? root.t("Unlock OmaBridge to view your sites.", "Entsperre OmaBridge, um deine Sites zu sehen.") : root.t("No saved sites yet. Add your StoreFront connection in OmaBridge.", "Noch keine Site gespeichert. Füge deinen StoreFront-Zugang in OmaBridge hinzu."))
+                text: root.loadError || (!root.stateLoaded ? root.t("Loading sites …", "Sites laden …") : root.locked ? root.t("Unlock OmaBridge to view your sites.", "Entsperre OmaBridge, um deine Sites zu sehen.") : root.t("No saved sites yet. Add your StoreFront connection in OmaBridge.", "Noch keine Site gespeichert. Füge deinen StoreFront-Zugang in OmaBridge hinzu."))
                 textFormat: Text.PlainText
                 wrapMode: Text.WordWrap
                 color: root.bar ? root.bar.foreground : "white"

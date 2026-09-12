@@ -109,7 +109,10 @@ def main():
                 socket.disconnectFromServer()
             socket.readyRead.connect(read)
             socket.disconnected.connect(lambda socket=socket: (connections.discard(socket), socket.deleteLater()))
-            QTimer.singleShot(3000, socket.abort)
+            timeout = QTimer(socket)
+            timeout.setSingleShot(True)
+            timeout.timeout.connect(socket.abort)
+            timeout.start(3000)
             read()
     server.newConnection.connect(incoming)
     if not args.background:

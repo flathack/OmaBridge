@@ -122,3 +122,36 @@ def test_bar_unlock_is_serialized_with_other_operations(app, tmp_path):
     window.mutating = False
     window.close()
     window.deleteLater()
+
+
+def test_cold_unlock_helper_closes_output_while_background_app_stays_alive(tmp_path):
+    import signal
+    from pathlib import Path
+    directory = tmp_path / 'omabridge'
+    SiteStore(directory).save([Site('Demo', 'https://citrix.test')])
+    AppLockStore(directory).configure('1234', 'pin')
+    env = {**os.environ, 'XDG_CONFIG_HOME': str(tmp_path)}
+    try:
+        # No app was pre-started. communicate must get EOF without waiting for
+        # the detached GUI to quit (the old forwarded pipes hung indefinitely).
+        result = subprocess.run([sys.executable, '-m', 'omabridge', '--unlock-stdin'],
+                                input=json.dumps({'secret': '1234'}), text=True, env=env,
+                                capture_output=True, timeout=12, check=True)
+        state = json.loads(result.stdout)
+        assert not state['locked'] and state['sites'][0]['name'] == 'Demo'
+        assert not result.stderr
+        live = subprocess.run([sys.executable, '-m', 'omabridge', '--bar-state'], env=env,
+                              capture_output=True, text=True, timeout=3, check=True)
+        assert json.loads(live.stdout) == state
+    finally:
+        # Only terminate this test's detached app, identified by its unique
+        # config directory; never touch the user's running OmaBridge process.
+        for process in Path('/proc').glob('[0-9]*'):
+            try:
+                args = (process / 'cmdline').read_bytes().split(b'\0')
+                if b'omabridge' not in args or b'--background' not in args:
+                    continue
+                if ('XDG_CONFIG_HOME=' + str(tmp_path)).encode() in (process / 'environ').read_bytes().split(b'\0'):
+                    os.kill(int(process.name), signal.SIGTERM)
+            except OSError:
+                pass

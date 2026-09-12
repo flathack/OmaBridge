@@ -82,7 +82,10 @@ def start_server(window):
                     reply(tr('Invalid bar request.'))
             socket.readyRead.connect(read)
             socket.disconnected.connect(lambda socket=socket: (connections.discard(socket), socket.deleteLater()))
-            QTimer.singleShot(10000, socket.abort)
+            timeout = QTimer(socket)
+            timeout.setSingleShot(True)
+            timeout.timeout.connect(socket.abort)
+            timeout.start(10000)
             read()
     server.newConnection.connect(incoming)
     return server
@@ -125,8 +128,20 @@ def request(message, directory=None, connect_timeout=0):
     return data
 
 
-def unlock_from_stdin(stream):
+def start_background():
     import sys
+    process = QProcess()
+    process.setProgram(sys.executable)
+    process.setArguments(['-m', 'omabridge', '--background'])
+    # Detached children must not keep the bar helper's pipes open. Otherwise
+    # StdioCollector waits for the entire app to exit before delivering its JSON.
+    process.setStandardInputFile(QProcess.nullDevice())
+    process.setStandardOutputFile(QProcess.nullDevice())
+    process.setStandardErrorFile(QProcess.nullDevice())
+    return process.startDetached()
+
+
+def unlock_from_stdin(stream):
     application = QCoreApplication.instance() or QCoreApplication([])
     raw = stream.readline(MAX_REQUEST + 1)
     try:
@@ -141,7 +156,8 @@ def unlock_from_stdin(stream):
     result = request(command)
     if result is None:
         # Start a hidden app only on an explicit unlock attempt, never on polling.
-        QProcess.startDetached(sys.executable, ['-m', 'omabridge', '--background'])
+        if not start_background():
+            raise OSError(tr('OmaBridge did not respond. Reopen the app and try again.'))
         result = request(command, connect_timeout=5)
     if result is None:
         raise ValueError(tr('OmaBridge did not respond. Reopen the app and try again.'))
