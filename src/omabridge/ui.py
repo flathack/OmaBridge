@@ -7,10 +7,10 @@ from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Qt, Signal
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QActionGroup, QIcon, QKeySequence
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
+    QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
     QMessageBox, QPushButton, QScrollArea, QStackedWidget, QTabBar,
     QToolButton, QVBoxLayout, QWidget, QSizePolicy,
@@ -344,6 +344,10 @@ class MainWindow(QMainWindow):
         self.lock_config = self.lock_store.load()
         self.locked = bool(self.lock_config)
         self.pending_site_id = None
+        self.pending_site_timer = QTimer(self)
+        self.pending_site_timer.setInterval(100)
+        self.pending_site_timer.timeout.connect(self.open_pending_site)
+        self.session_generation = 0
         self.vault = vault or SecretVault()
         self.sites = [] if self.locked else self.store.load()
         self.sessions = {}
@@ -540,10 +544,12 @@ class MainWindow(QMainWindow):
         self.run_job(lambda: self.lock_store.verify(secret), done)
 
     def lock_app(self):
-        if self.locked or self.mutating or not self.lock_config:
+        if self.locked or self.jobs or self.mutating or not self.lock_config:
             return
         # Dispose browser profiles and automation before hiding all site information.
         self.locked = True
+        self.session_generation += 1
+        self.pending_site_timer.stop()
         self.pages.setCurrentIndex(1)
         for site_id in list(self.sessions):
             self.remove_session(site_id)
@@ -647,11 +653,13 @@ class MainWindow(QMainWindow):
         self.status.setText(tr("Language changed."))
 
     def run_job(self, operation, callback):
+        if self.jobs:
+            raise RuntimeError("Background operations must be serialized.")
         self.mutating = True
         self.set_controls()
         def finished(result, error):
-            self.mutating = False
             self.jobs.discard(job)
+            self.mutating = bool(self.jobs)
             self.set_controls()
             callback(result, error)
         job = Job(operation, finished)
@@ -956,7 +964,10 @@ class MainWindow(QMainWindow):
             return
         if site.mode == "workspace" and not workspace_executable():
             self.status.setText(tr("Citrix Workspace is not installed. You can sign in; install Workspace or select browser mode to launch a session."))
+        generation = self.session_generation
         def connected(credentials, error):
+            if self.locked or generation != self.session_generation or site not in self.sites:
+                return
             if error:
                 self.show_error(error)
                 return
@@ -978,12 +989,24 @@ class MainWindow(QMainWindow):
         self.status.setText(tr("Opening the keyring …"))
         self.run_job(lambda: self.vault.get(site.id), connected)
 
+    def open_pending_site(self):
+        if self.locked or not self.pending_site_id:
+            self.pending_site_timer.stop()
+            return
+        if self.jobs or self.mutating or QApplication.activeModalWidget():
+            return
+        site_id, self.pending_site_id = self.pending_site_id, None
+        self.pending_site_timer.stop()
+        self.open_site_id(site_id)
+
     def open_site_id(self, site_id):
         if self.locked:
             self.pending_site_id = site_id
             self.unlock_secret.setFocus()
             return
-        if self.mutating:
+        if self.jobs or self.mutating or QApplication.activeModalWidget():
+            self.pending_site_id = site_id
+            self.pending_site_timer.start()
             return
         # Reload so changes from the bar's on-disk list are reflected.
         self.sites = self.store.load()
@@ -1032,6 +1055,8 @@ class MainWindow(QMainWindow):
             self.status.setText(tr("Please wait for the current operation to finish."))
             event.ignore()
             return
+        self.session_generation += 1
+        self.pending_site_timer.stop()
         for site_id in list(self.sessions):
             self.remove_session(site_id)
         event.accept()

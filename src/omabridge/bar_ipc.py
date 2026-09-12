@@ -3,33 +3,25 @@
 Lock secrets travel via stdin and IPC, never argv, environment or a state file.
 The running MainWindow remains the authority for successful authentication.
 """
-import hashlib
 import json
-import os
 import time
 
 from PySide6.QtCore import QCoreApplication, QProcess, QTimer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 
 from .i18n import language, tr
-from .storage import config_directory
-from pathlib import Path
+from .ipc_security import endpoint, check_endpoint, require_same_user
 
 MAX_REQUEST = 256 * 1024
 MAX_RESPONSE = 8 * 1024 * 1024
 
 
 def server_name(directory=None):
-    config = str((directory or config_directory()).resolve())
-    suffix = hashlib.sha256(config.encode()).hexdigest()[:16]
-    return f'omabridge-bar-{os.getuid()}-{suffix}'
+    return endpoint('bar', directory)
 
 
 def launcher_name():
-    # Keep the installed default endpoint; isolate alternate XDG configurations.
-    if config_directory().resolve() == (Path.home() / '.config/omabridge').resolve():
-        return f'omabridge-{os.getuid()}'
-    return server_name().replace('omabridge-bar-', 'omabridge-')
+    return endpoint('launcher')
 
 
 def window_state(window):
@@ -43,6 +35,7 @@ def start_server(window):
     server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
     name = server_name(window.store.directory)
     # Main's singleton lock is held before calling this function.
+    check_endpoint(name)
     QLocalServer.removeServer(name)
     if not server.listen(name):
         raise OSError(tr('Could not start OmaBridge IPC.'))
@@ -50,6 +43,11 @@ def start_server(window):
     def incoming():
         while server.hasPendingConnections():
             socket = server.nextPendingConnection()
+            try:
+                require_same_user(socket)
+            except ValueError:
+                socket.deleteLater()
+                continue
             connections.add(socket)
             pending = [False]
             def reply(error=None, socket=socket):
@@ -97,13 +95,16 @@ def request(message, directory=None, connect_timeout=0):
     socket = QLocalSocket()
     deadline = time.monotonic() + connect_timeout
     while True:
-        socket.connectToServer(server_name(directory))
+        name = server_name(directory)
+        check_endpoint(name)
+        socket.connectToServer(name)
         if socket.waitForConnected(100):
             break
         socket.abort()
         if time.monotonic() >= deadline:
             return None
         time.sleep(.05)
+    require_same_user(socket)
     payload = json.dumps(message, ensure_ascii=False).encode() + b'\n'
     if len(payload) > MAX_REQUEST:
         socket.abort()

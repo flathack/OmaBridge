@@ -124,3 +124,32 @@ background startup and conservative state after the app exits. An isolated Quick
 run also verified masked-input submission and the resulting demo site list. Bandit
 reports the same two low subprocess findings and no medium/high findings. No real
 portal or user credentials were used. This remains a local review, not Marketplace approval.
+
+## 0.4.3 follow-up — authenticated local IPC and serialized operations
+
+The final review reproduced two high-priority issues in 0.4.2: a substituted socket
+at the predictable shared temporary path could receive the unlock secret, and a
+site request during a modal edit could overlap keyring jobs and start a session
+after locking. Both are addressed in 0.4.3.
+
+Bar and launcher sockets now live in a checked, user-owned directory with mode
+`0700` under the runtime directory. Unsafe directory/socket ownership, permissions
+and symlinks are rejected. Both clients and servers verify Linux `SO_PEERCRED`
+before processing application data; clients verify it before writing any secret.
+There is no connection fallback to the old shared socket paths. Fully quit and
+reopen an older running app after upgrading. Same-Linux-user processes remain
+outside the app lock's protection boundary.
+
+Site requests wait until modal dialogs and background operations finish. Keyring
+operations are serialized, locking checks outstanding jobs, and session callbacks
+must still belong to the current unlocked generation before creating a browser.
+
+Validation on 2026-09-12: all 107 local tests passed, including rejection of public
+socket endpoints, no secret bytes sent to a simulated wrong-UID peer, real same-user
+CLI IPC, deferred site launches during edits/saves, and stale callbacks after lock
+and subsequent unlock. Bandit reported no medium/high findings and the two existing
+low subprocess findings, with no scan errors. The Omarchy manifest validated and
+source/wheel builds passed. No live customer portal or real credentials were used.
+
+A root LICENSE and the Marketplace's manual review are still outstanding. This
+follow-up documents local fixes and validation, not official maintainer approval.

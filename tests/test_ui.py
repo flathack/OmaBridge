@@ -329,3 +329,58 @@ def test_totp_warning_is_available_in_german(app):
     assert 'Verantwortung liegt bei dir' in dialog.totp_warning.text()
     dialog.close()
     dialog.deleteLater()
+
+
+def test_bar_launch_waits_for_edit_dialog_and_save(app, tab_window, monkeypatch):
+    window = tab_window
+    first, second = window.sites
+    saving, release = threading.Event(), threading.Event()
+    original_set = window.vault.set
+    opened = []
+    def slow_save(key, value):
+        saving.set()
+        assert release.wait(5)
+        original_set(key, value)
+    monkeypatch.setattr(window.vault, 'set', slow_save)
+    monkeypatch.setattr(window, 'connect_site', lambda: opened.append(window.current_site().id))
+    observations = []
+    def request_while_editing():
+        window.open_site_id(second.id)
+        observations.append((window.pending_site_id, len(window.jobs), list(opened)))
+        enter_site('Updated demo')
+    QTimer.singleShot(0, request_while_editing)
+    try:
+        window.edit_dialog(first, Credentials())
+        wait_for(app, saving.is_set)
+        assert observations == [(second.id, 0, [])]
+        assert len(window.jobs) == 1 and window.mutating
+        window.open_pending_site()
+        assert not opened
+        window.lock_config = {'enabled': True}
+        window.lock_app()
+        assert not window.locked  # Saving still owns the mutation guard.
+        release.set()
+        wait_for(app, lambda: bool(opened))
+        assert opened == [second.id] and not window.jobs
+    finally:
+        release.set()
+        wait_for(app, lambda: not window.jobs)
+
+
+@pytest.mark.parametrize('unlock_again', [False, True])
+def test_late_credentials_cannot_start_a_session_after_lock(app, tab_window, monkeypatch, unlock_again):
+    window = tab_window
+    sites = list(window.sites)
+    callbacks = []
+    monkeypatch.setattr(window, 'run_job', lambda operation, callback: callbacks.append(callback))
+    window.connect_site()
+    assert len(callbacks) == 1
+    window.lock_config = {'enabled': True}
+    window.lock_app()
+    assert window.locked and not window.sessions
+    if unlock_again:
+        # A callback from the old unlocked generation is also stale after unlock.
+        window.locked = False
+        window.sites = sites
+    callbacks[0](Credentials('demo-user', 'demo-password'), None)
+    assert not window.sessions

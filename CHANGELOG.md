@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.4.3 — 2026-09-12
+
+- Bar- und Launcher-IPC verwenden ein geprüftes privates Runtime-Verzeichnis.
+- Die Benutzer-ID der Gegenstelle wird vor jeder Übertragung geprüft, insbesondere vor Entsperrdaten.
+- Site-Aufrufe warten während Dialogen und Hintergrundaufgaben; Operationen laufen nacheinander.
+- Verspätete Verbindungsantworten werden nach dem Sperren verworfen.
+- Sicherheitskorrekturen durch gezielte Regressionstests abgesichert.
+
 ## 0.4.2 — 2026-09-12
 
 - Stabile Bar-Anzeige beim Polling: kein sekündlicher Wechsel zu „Laden“ und kein springendes Eingabefeld.

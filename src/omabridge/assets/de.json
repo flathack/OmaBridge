@@ -159,5 +159,9 @@
   "Please wait for the current operation to finish.": "Bitte warte, bis der aktuelle Vorgang abgeschlossen ist.",
   "Invalid bar request.": "Ungültige Anfrage aus der Bar.",
   "Invalid bar response.": "Ungültige Antwort für die Bar.",
-  "OmaBridge did not respond. Reopen the app and try again.": "OmaBridge hat nicht geantwortet. Öffne die App neu und versuche es erneut."
+  "OmaBridge did not respond. Reopen the app and try again.": "OmaBridge hat nicht geantwortet. Öffne die App neu und versuche es erneut.",
+  "IPC runtime directory must be absolute and private.": "Das IPC-Runtime-Verzeichnis muss absolut und privat sein.",
+  "IPC runtime path is too long.": "Der IPC-Runtime-Pfad ist zu lang.",
+  "Untrusted local IPC endpoint.": "Nicht vertrauenswürdiger lokaler IPC-Endpunkt.",
+  "Untrusted local IPC peer.": "Nicht vertrauenswürdige lokale IPC-Gegenstelle."
 }

@@ -117,7 +117,10 @@ its portal. A closed app starts in the background for this explicit unlock reque
 The bar reads the running app's lock state and refreshes while the popup is open.
 Re-locking or quitting hides the sites again. Direct site requests also wait for a
 successful unlock. The PIN/password travels over stdin and a user-only local socket,
-never in command-line arguments or a saved unlocked-state file.
+never in command-line arguments or a saved unlocked-state file. Both IPC endpoints
+use a verified private runtime directory and check the peer’s Linux user ID before
+sending data. After upgrading from 0.4.2 or older, fully quit and reopen OmaBridge
+to activate the new IPC endpoints.
 
 Only a salted scrypt hash is stored in `~/.config/omabridge/app-lock.json` (mode `0600`),
 with increasing retry delays after three wrong attempts. No lock PIN/password is

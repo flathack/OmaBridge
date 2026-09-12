@@ -58,16 +58,28 @@ def main():
     app = QApplication(sys.argv[:1])
     app.setDesktopFileName("omabridge")
     from .bar_ipc import launcher_name
-    server_name = launcher_name()
+    from .ipc_security import check_endpoint, require_same_user, instance_lock_path
+    try:
+        server_name = launcher_name()
+        check_endpoint(server_name)
+        lock_path = instance_lock_path()
+    except (ValueError, OSError) as error:
+        print(str(error), file=sys.stderr)
+        return 1
     client = QLocalSocket()
     client.connectToServer(server_name)
     if client.waitForConnected(500):
+        try:
+            require_same_user(client)
+        except ValueError as error:
+            print(str(error), file=sys.stderr)
+            return 1
         client.write(json.dumps({"site": args.site, "background": args.background}).encode() + b"\n")
         client.waitForBytesWritten(1000)
         client.disconnectFromServer()
         return 0
-    from PySide6.QtCore import QLockFile, QStandardPaths
-    lock = QLockFile(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.RuntimeLocation) + "/" + server_name + ".lock")
+    from PySide6.QtCore import QLockFile
+    lock = QLockFile(lock_path)
     if not lock.tryLock(1000):
         print(tr("OmaBridge is already starting. Please try opening it again."), file=sys.stderr)
         return 1
@@ -88,6 +100,11 @@ def main():
     def incoming():
         while server.hasPendingConnections():
             socket = server.nextPendingConnection()
+            try:
+                require_same_user(socket)
+            except ValueError:
+                socket.deleteLater()
+                continue
             connections.add(socket)
             def read(socket=socket):
                 if socket.bytesAvailable() > 4096:

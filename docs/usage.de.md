@@ -124,7 +124,11 @@ Die Bar fragt den aktuellen Sperrstatus der laufenden App ab und aktualisiert si
 bei geöffnetem Popup. Erneutes Sperren oder Beenden blendet die Sites wieder aus.
 Auch direkte Site-Aufrufe warten auf das Entsperren. PIN/Passwort werden über stdin
 und einen lokalen Socket nur für deinen Benutzer übertragen, nicht als
-Kommandozeilenargument oder in einer Datei mit gespeichertem Entsperrstatus.
+Kommandozeilenargument oder in einer Datei mit gespeichertem Entsperrstatus. Beide
+IPC-Endpunkte liegen in einem geprüften privaten Runtime-Verzeichnis und prüfen
+vor der Übertragung die Linux-Benutzer-ID der Gegenstelle. Nach einem Update von
+0.4.2 oder älter OmaBridge vollständig beenden und neu öffnen, damit die neuen
+IPC-Endpunkte aktiv werden.
 
 Gespeichert wird nur ein gesalzener scrypt-Hash in
 `~/.config/omabridge/app-lock.json` (Modus `0600`), mit steigenden Wartezeiten nach
