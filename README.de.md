@@ -31,7 +31,15 @@ cd OmaBridge
 ```
 
 Der Installer richtet App und Bar-Widget unter deinem Benutzerkonto ein.
-Erneutes Ausführen aktualisiert beides. `omarchy plugin add` allein installiert die Python-App nicht.
+Erneutes Ausführen aktualisiert beides.
+
+Das Bar-Widget kannst du auch direkt über Omarchy hinzufügen und aktivieren:
+
+```bash
+omarchy plugin add https://github.com/flathack/OmaBridge.git --enable
+```
+
+Dieser Befehl installiert nur das Widget. Für die Python-App ist weiterhin der Installer oben nötig.
 
 ## Verwendung
 
