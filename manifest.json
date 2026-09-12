@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "local.omabridge",
+  "name": "OmaBridge",
+  "version": "0.2.0",
+  "author": "OmaBridge",
+  "description": "Citrix-Sites auswählen und mit Passwort und TOTP anmelden",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "BarWidget.qml"},
+  "barWidget": {
+    "displayName": "OmaBridge",
+    "description": "Citrix StoreFront, Workspace und HTML5",
+    "category": "Connectivity",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

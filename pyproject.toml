@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omabridge"
+version = "0.2.0"
+description = "Citrix StoreFront launcher for the Omarchy bar"
+requires-python = ">=3.11"
+dependencies = ["PySide6>=6.8,<7", "SecretStorage>=3.3,<4"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+omabridge = "omabridge.__main__:main"
+
+[tool.setuptools.package-data]
+omabridge = ["assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

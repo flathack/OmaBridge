@@ -1,0 +1,205 @@
+import threading
+
+import pytest
+
+from PySide6.QtCore import QTimer, QPoint, QCoreApplication, QEvent
+from PySide6.QtWidgets import QApplication, QDialog, QMessageBox
+
+from omabridge.models import Credentials, Site
+from omabridge.browser import PortalSession
+from omabridge.storage import SiteStore
+from omabridge.ui import MainWindow, SiteDialog
+from test_browser import wait_for
+
+
+class MemoryVault:
+    def __init__(self):
+        self.entries = {}
+        self.threads = []
+
+    def get(self, key):
+        self.threads.append(threading.current_thread())
+        return self.entries.get(key, Credentials())
+
+    def set(self, key, value):
+        self.threads.append(threading.current_thread())
+        self.entries[key] = value
+
+    def delete(self, key):
+        self.threads.append(threading.current_thread())
+        self.entries.pop(key, None)
+
+
+def enter_site(name="Büro", url="https://citrix.test/Citrix/StoreWeb/"):
+    dialog = QApplication.activeModalWidget()
+    assert isinstance(dialog, SiteDialog)
+    dialog.name.setText(name)
+    dialog.url.setText(url)
+    dialog.username.setText("demo-user")
+    dialog.password.setText("test-password")
+    dialog.totp.setText("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
+    dialog.validate()
+
+
+def test_create_edit_mode_delete_and_vault_threads(app, tmp_path):
+    vault, store = MemoryVault(), SiteStore(tmp_path)
+    window = MainWindow(store, vault)
+    errors = []
+    window.show_error = errors.append
+    window.show()
+    QTimer.singleShot(0, enter_site)
+    window.add_site()
+    wait_for(app, lambda: not window.jobs)
+    assert not errors
+    first = store.load()[0]
+    assert first.name == "Büro"
+    assert vault.entries[first.id].password == "test-password"
+    assert "test-password" not in store.path.read_text()
+    QTimer.singleShot(0, lambda: enter_site("Kunde", "https://customer.test"))
+    window.add_site()
+    wait_for(app, lambda: not window.jobs)
+    assert len(store.load()) == 2
+    window.change_mode("browser")
+    assert store.load()[1].mode == "browser"
+    # Editing fetches the keyring asynchronously before opening the dialog.
+    edit_timer = QTimer()
+    def edit_when_open():
+        if isinstance(QApplication.activeModalWidget(), SiteDialog):
+            edit_timer.stop()
+            enter_site("Kunde neu", "https://customer.test")
+    edit_timer.timeout.connect(edit_when_open)
+    edit_timer.start(10)
+    window.edit_site()
+    wait_for(app, lambda: store.load()[1].name == "Kunde neu")
+    wait_for(app, lambda: not window.jobs)
+    QTimer.singleShot(0, lambda: QApplication.activeModalWidget().done(QMessageBox.StandardButton.Yes))
+    window.delete_site()
+    wait_for(app, lambda: not window.jobs)
+    assert len(store.load()) == 1 and len(vault.entries) == 1
+    assert all(thread is not threading.main_thread() for thread in vault.threads)
+    assert not errors
+    window.close()
+
+
+def test_failed_config_write_rolls_back_new_secret(app, tmp_path, monkeypatch):
+    vault, store = MemoryVault(), SiteStore(tmp_path)
+    window = MainWindow(store, vault)
+    errors = []
+    window.show_error = errors.append
+    def fail(_):
+        raise OSError("Disk full")
+    monkeypatch.setattr(store, "save", fail)
+    QTimer.singleShot(0, enter_site)
+    window.add_site()
+    wait_for(app, lambda: not window.jobs)
+    assert errors and str(errors[0]) == "Disk full"
+    assert not vault.entries and not window.sites
+    window.close()
+
+
+def test_invalid_totp_prevents_saving(app):
+    dialog = SiteDialog(None)
+    dialog.name.setText("Büro")
+    dialog.url.setText("https://citrix.test")
+    dialog.totp.setText("123456")
+    dialog.validate()
+    assert dialog.value is None
+    assert dialog.error.text()
+    dialog.close()
+
+
+@pytest.fixture
+def tab_window(app, tmp_path, monkeypatch):
+    store = SiteStore(tmp_path)
+    store.save([Site("Büro", "https://citrix.test"), Site("Kunde", "https://customer.test")])
+    window = MainWindow(store, MemoryVault())
+    # No external portals or credentials are used by these UI tests.
+    monkeypatch.setattr(PortalSession, "start", lambda self: self.timer.stop())
+    window.show()
+    app.processEvents()
+    yield window
+    window.close()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    window.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+
+@pytest.mark.parametrize("width", [640, 1320])
+def test_portal_uses_entire_window_below_single_row(app, tab_window, width):
+    window = tab_window
+    window.resize(width, 700)
+    window.connect_site()
+    wait_for(app, lambda: not window.jobs)
+    app.processEvents()
+    view = window.current_view()
+    assert window.toolbar.height() == 42
+    assert view.mapTo(window, QPoint(0, 0)) == QPoint(0, 42)
+    assert view.width() == window.width()
+    assert view.height() == window.height() - 42
+    assert window.status.parentWidget() is window.toolbar
+
+
+def test_tabs_switch_sessions_and_reopen_closed_site(app, tab_window):
+    window = tab_window
+    first, second = window.sites
+    window.connect_site()
+    wait_for(app, lambda: not window.jobs)
+    first_session = window.sessions[first.id]
+    window.tabs.setCurrentIndex(1)
+    wait_for(app, lambda: not window.jobs)
+    assert window.current_site().id == second.id
+    assert window.stack.currentWidget() is window.sessions[second.id]
+    window.tabs.setCurrentIndex(0)
+    assert window.stack.currentWidget() is first_session
+    window.close_current_tab()
+    assert first.id not in window.sessions
+    assert first.id in window.hidden_sites
+    assert len(window.store.load()) == 2
+    window.open_site_id(first.id)
+    wait_for(app, lambda: not window.jobs)
+    assert first.id not in window.hidden_sites
+    assert window.current_site().id == first.id
+    assert window.sessions[first.id] is not first_session
+
+
+def test_html5_popup_is_a_tab_with_same_profile_and_cleanup(app, tab_window):
+    from PySide6.QtWebEngineCore import QWebEnginePage
+    window = tab_window
+    window.connect_site()
+    wait_for(app, lambda: not window.jobs)
+    site = window.current_site()
+    session = window.sessions[site.id]
+    popup_page = session.page.createWindow(QWebEnginePage.WebWindowType.WebBrowserTab)
+    view = window.current_view()
+    assert popup_page is view.page()
+    assert popup_page.profile() is session.profile
+    assert window.tabs.count() == 3
+    assert window.stack.currentWidget() is view
+    assert not view.isWindow()
+    window.popup_title(window.current_key(), "Virtueller Desktop")
+    assert window.tabs.tabText(window.tabs.currentIndex()) == "Virtueller Desktop"
+    popup_page.windowCloseRequested.emit()
+    assert window.tabs.count() == 2
+    assert window.stack.currentWidget() is session
+    assert not session.popups and not window.popup_tabs
+    session.page.createWindow(QWebEnginePage.WebWindowType.WebBrowserTab)
+    # Closing the parent Site tab closes its HTML5 children as well.
+    window.close_tab(0)
+    assert not window.popup_tabs
+    assert site.id not in window.sessions
+
+
+def test_menu_status_does_not_cover_portal(app, tab_window):
+    window = tab_window
+    window.show_session_message(window.sites[0].id, "Warte auf TOTP …")
+    assert "Warte auf TOTP" in window.status.toolTip()
+    assert window.status.text() == "ⓘ"
+    window.change_mode("browser")
+    assert window.store.load()[0].mode == "browser"
+    assert window.mode_actions["browser"].isChecked()
+
+
+def test_unknown_site_id_does_not_connect_another_site(app, tab_window):
+    tab_window.open_site_id("missing-site")
+    assert not tab_window.jobs and not tab_window.sessions
+    assert "nicht gefunden" in tab_window.status.message
