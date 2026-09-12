@@ -156,5 +156,8 @@
   "A PIN must contain only digits (0–9). Any length is allowed.": "Eine PIN darf nur Ziffern (0–9) enthalten. Jede Länge ist erlaubt.",
   "App lock configuration changed. Restart OmaBridge.": "Die Konfiguration der App-Sperre wurde geändert. Starte OmaBridge neu.",
   "Too many attempts. Try again in {seconds} seconds.": "Zu viele Versuche. Versuche es in {seconds} Sekunden erneut.",
-  "Please wait for the current operation to finish.": "Bitte warte, bis der aktuelle Vorgang abgeschlossen ist."
+  "Please wait for the current operation to finish.": "Bitte warte, bis der aktuelle Vorgang abgeschlossen ist.",
+  "Invalid bar request.": "Ungültige Anfrage aus der Bar.",
+  "Invalid bar response.": "Ungültige Antwort für die Bar.",
+  "OmaBridge did not respond. Reopen the app and try again.": "OmaBridge hat nicht geantwortet. Öffne die App neu und versuche es erneut."
 }

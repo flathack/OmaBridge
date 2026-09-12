@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "local.omabridge",
   "name": "OmaBridge",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": "FlatHack",
   "description": "Automatically sign in to Citrix remote sites with password and TOTP",
   "kinds": ["bar-widget"],

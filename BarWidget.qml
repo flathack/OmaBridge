@@ -13,13 +13,38 @@ Ui.BarWidget {
     property bool popupOpen: false
     property var sites: []
     property string loadError: ""
+    property string unlockError: ""
     property bool locked: false
     property string language: "en"
     readonly property string launcher: Quickshell.env("HOME") + "/.local/bin/omabridge"
     function t(english, german) { return root.language === "de" ? german : english }
     Component.onCompleted: refreshSites()
 
+    onPopupOpenChanged: {
+        passwordInput.clear()
+        unlockError = ""
+        sites = []
+        if (popupOpen) refreshSites()
+    }
     function close() { popupOpen = false }
+    function applyState(parsed) {
+        if (!Array.isArray(parsed.sites) || typeof parsed.locked !== "boolean") throw new Error("Invalid state")
+        language = parsed.language === "de" ? "de" : "en"
+        locked = parsed.locked
+        sites = locked ? [] : parsed.sites
+        if (!locked) unlockError = ""
+    }
+    function unlock() {
+        if (unlocker.running || passwordInput.text.length === 0) return
+        unlockError = ""
+        unlocker.running = true
+    }
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.popupOpen && !unlocker.running
+        onTriggered: root.refreshSites()
+    }
     function launch(siteId) {
         const args = [launcher]
         if (siteId) args.push("--site", siteId)
@@ -27,9 +52,8 @@ Ui.BarWidget {
         close()
     }
     function refreshSites() {
-        if (!reader.running) {
+        if (!reader.running && !unlocker.running) {
             loadError = ""
-            sites = []
             reader.running = true
         }
     }
@@ -68,10 +92,7 @@ Ui.BarWidget {
             onStreamFinished: {
                 try {
                     const parsed = JSON.parse(text)
-                    if (!Array.isArray(parsed.sites)) throw new Error("Invalid sites")
-                    root.language = parsed.language === "de" ? "de" : "en"
-                    root.locked = parsed.locked === true
-                    root.sites = root.locked ? [] : parsed.sites
+                    root.applyState(parsed)
                 } catch (_) {
                     root.sites = []
                     root.loadError = root.t("Could not load sites. Open OmaBridge and check the configuration.", "Sites konnten nicht geladen werden. OmaBridge öffnen und Konfiguration prüfen.")
@@ -79,7 +100,35 @@ Ui.BarWidget {
             }
         }
         onExited: function(exitCode, exitStatus) {
-            if (exitCode !== 0) root.loadError = root.t("OmaBridge is unavailable. Run scripts/install.sh first.", "OmaBridge nicht verfügbar. Zuerst scripts/install.sh ausführen.")
+            if (exitCode !== 0) {
+                root.sites = []
+                root.loadError = root.t("OmaBridge is unavailable. Open the app to check its configuration.", "OmaBridge nicht verfügbar. Öffne die App, um ihre Konfiguration zu prüfen.")
+            }
+        }
+    }
+    Process {
+        id: unlocker
+        command: [root.launcher, "--unlock-stdin"]
+        stdinEnabled: true
+        onStarted: {
+            write(JSON.stringify({secret: passwordInput.text}) + "\n")
+            passwordInput.clear()
+        }
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const parsed = JSON.parse(text)
+                    root.applyState(parsed)
+                    root.unlockError = parsed.error || ""
+                } catch (_) {
+                    root.unlockError = root.t("Unlock failed. Reopen OmaBridge and try again.", "Entsperren fehlgeschlagen. OmaBridge neu öffnen und erneut versuchen.")
+                }
+            }
+        }
+        onExited: function(exitCode, exitStatus) {
+            passwordInput.clear()
+            if (exitCode !== 0 && root.unlockError === "")
+                root.unlockError = root.t("Unlock failed. Reopen OmaBridge and try again.", "Entsperren fehlgeschlagen. OmaBridge neu öffnen und erneut versuchen.")
         }
     }
     Ui.PopupCard {
@@ -106,6 +155,34 @@ Ui.BarWidget {
                 width: parent.width
                 visible: root.loadError !== "" || root.sites.length === 0
                 text: root.loadError || (reader.running ? root.t("Loading sites …", "Sites laden …") : root.locked ? root.t("Unlock OmaBridge to view your sites.", "Entsperre OmaBridge, um deine Sites zu sehen.") : root.t("No saved sites yet. Add your StoreFront connection in OmaBridge.", "Noch keine Site gespeichert. Füge deinen StoreFront-Zugang in OmaBridge hinzu."))
+                textFormat: Text.PlainText
+                wrapMode: Text.WordWrap
+                color: root.bar ? root.bar.foreground : "white"
+                font.family: root.bar ? root.bar.fontFamily : "monospace"
+                font.pixelSize: Style.font.body
+            }
+            Ui.TextField {
+                id: passwordInput
+                width: parent.width
+                visible: root.locked
+                enabled: !unlocker.running
+                password: true
+                placeholderText: root.t("PIN or password", "PIN oder Passwort")
+                Accessible.name: placeholderText
+                foreground: root.bar ? root.bar.foreground : "white"
+                onAccepted: root.unlock()
+            }
+            Ui.Button {
+                visible: root.locked
+                enabled: !unlocker.running && passwordInput.text.length > 0
+                text: unlocker.running ? root.t("Unlocking …", "Entsperren …") : root.t("Unlock", "Entsperren")
+                foreground: root.bar ? root.bar.foreground : "white"
+                onClicked: root.unlock()
+            }
+            Text {
+                width: parent.width
+                visible: root.unlockError !== ""
+                text: root.unlockError
                 textFormat: Text.PlainText
                 wrapMode: Text.WordWrap
                 color: root.bar ? root.bar.foreground : "white"

@@ -111,8 +111,13 @@ PIN/password. The lock applies on the next app start, or immediately with
 
 Locking closes local portal and HTML5 sessions, stops automation and hides site names.
 Native Workspace sessions continue independently; locking is not a server-side logoff.
-With app lock enabled, the bar opens OmaBridge without listing sites; choose a site
-inside the unlocked app. Direct site requests also wait for a successful unlock.
+With app lock enabled, enter your PIN/password directly in the bar popup and click
+**Unlock** (or press Enter). The site list appears immediately; select a site to open
+its portal. A closed app starts in the background for this explicit unlock request.
+The bar reads the running app's lock state and refreshes while the popup is open.
+Re-locking or quitting hides the sites again. Direct site requests also wait for a
+successful unlock. The PIN/password travels over stdin and a user-only local socket,
+never in command-line arguments or a saved unlocked-state file.
 
 Only a salted scrypt hash is stored in `~/.config/omabridge/app-lock.json` (mode `0600`),
 with increasing retry delays after three wrong attempts. No lock PIN/password is

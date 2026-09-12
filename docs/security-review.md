@@ -110,3 +110,17 @@ long passwords. Native Workspace sessions are outside the lock's scope.
 Theme files are size-limited TOML data with validated hex colors, never executed.
 Polling the logical path handles atomic theme/symlink replacement without restarting
 portal sessions. This follow-up is not an Omarchy maintainer approval.
+
+## 0.4.1 follow-up — unlock from the bar
+
+The bar now asks the running app for its actual lock state. Unlock input travels
+through stdin and a user-only local socket, never argv, environment or a saved
+unlocked flag. PIN/password values temporarily pass through Quickshell memory;
+the field is cleared after submission. Verification and retry limits remain in the
+app, and site launch still checks the lock even if a bar entry is stale.
+
+All 97 tests pass locally, including real IPC requests, rejected guesses, re-locking,
+background startup and conservative state after the app exits. An isolated Quickshell
+run also verified masked-input submission and the resulting demo site list. Bandit
+reports the same two low subprocess findings and no medium/high findings. No real
+portal or user credentials were used. This remains a local review, not Marketplace approval.

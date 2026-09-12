@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.4.1 — 2026-09-12
+
+- PIN-/Passworteingabe direkt im Bar-Popup; danach Sites sofort auswählen und starten.
+- Bar berücksichtigt den tatsächlichen Sperrstatus statt nur die eingerichtete Sperre.
+- Hintergrundstart beim Entsperren; Site-Liste verschwindet nach Sperren oder Beenden.
+- Geheimnisse ausschließlich über stdin und lokalen Benutzer-Socket, nicht über argv.
+
 ## 0.4.0 — 2026-09-12
 
 - App-Farben folgen dem Omarchy-Theme und aktualisieren sich live, auch in Dialogen.

@@ -117,8 +117,14 @@ sofort über **⋮ → App sperren / Ctrl+Shift+L**. Es gibt keine automatische 
 
 Sperren schließt lokale Portal- und HTML5-Sitzungen, stoppt die Automatik und blendet
 Site-Namen aus. Native Workspace-Sitzungen laufen unabhängig weiter; es erfolgt kein
-serverseitiges Logoff. Bei aktivierter Sperre öffnet die Bar OmaBridge ohne Site-Liste;
-die Site wählst du in der entsperrten App. Auch direkte Site-Aufrufe warten auf das Entsperren.
+serverseitiges Logoff. Bei aktivierter Sperre gibst du PIN/Passwort direkt im Bar-Popup
+ein und wählst **Entsperren** (oder Enter). Anschließend erscheinen sofort die Sites;
+ein Klick startet das Portal. Eine geschlossene App startet dafür im Hintergrund.
+Die Bar fragt den aktuellen Sperrstatus der laufenden App ab und aktualisiert sich
+bei geöffnetem Popup. Erneutes Sperren oder Beenden blendet die Sites wieder aus.
+Auch direkte Site-Aufrufe warten auf das Entsperren. PIN/Passwort werden über stdin
+und einen lokalen Socket nur für deinen Benutzer übertragen, nicht als
+Kommandozeilenargument oder in einer Datei mit gespeichertem Entsperrstatus.
 
 Gespeichert wird nur ein gesalzener scrypt-Hash in
 `~/.config/omabridge/app-lock.json` (Modus `0600`), mit steigenden Wartezeiten nach

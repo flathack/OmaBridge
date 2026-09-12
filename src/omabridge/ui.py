@@ -502,25 +502,38 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self.lock_page)
 
     def unlock_app(self):
-        if not self.locked or self.mutating:
-            return
         secret = self.unlock_secret.text()
         self.unlock_secret.clear()
+        self.unlock_with_secret(secret)
+
+    def unlock_with_secret(self, secret, callback=None):
+        def report(error=None):
+            if error:
+                self.unlock_error.setText(str(error))
+                self.unlock_secret.setFocus()
+            if callback:
+                callback(error)
+        if self.mutating:
+            report(tr("Please wait for the current operation to finish."))
+            return
+        if not self.locked:
+            report()
+            return
         self.unlock_error.setText("")
         def done(valid, error):
             if error or not valid:
-                self.unlock_error.setText(str(error) if error else tr("Incorrect PIN or password."))
-                self.unlock_secret.setFocus()
+                report(error or tr("Incorrect PIN or password."))
                 return
             try:
                 sites = self.store.load()
             except (ValueError, OSError) as error:
-                self.unlock_error.setText(str(error))
+                report(error)
                 return
             self.sites = sites
             self.locked = False
             self.pages.setCurrentIndex(0)
             self.refresh()
+            report()
             pending, self.pending_site_id = self.pending_site_id, None
             if pending:
                 self.open_site_id(pending)
