@@ -8,7 +8,7 @@ Die CI-Artefakte sind Entwicklungs-Builds.
 
 Vor dem ersten öffentlichen Release:
 
-1. Projektlizenz festlegen und in `LICENSE` sowie den Paketmetadaten eintragen.
+1. MIT-Lizenz ist in `LICENSE` und den Paketmetadaten eingetragen; ihre Aufnahme in die Release-Pakete prüfen.
 2. Installation aus einem frischen Checkout auf Omarchy prüfen. Der vollständige
    Einstieg ist `./scripts/install.sh`: `omarchy plugin add` installiert nur das
    Widget, nicht die erforderliche Python-App.

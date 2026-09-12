@@ -15,7 +15,7 @@ Bandit reports only the same two low-severity Workspace subprocess notices.
 | --- | --- | --- |
 | Medium · fixed in 0.3.0 | A password-change field can receive the saved account password. | Visible `autocomplete="new-password"` fields now block the entire sign-in step, including custom selectors. |
 | Medium · fixed in 0.3.0 | An ICA download can launch Workspace after switching to browser mode. | Download completion now rechecks the launch mode and session lifetime and deletes rejected tickets. |
-| Publication blocker | No root license file. | Choose a license and add it before submission. |
+| Resolved · MIT license added | No root license file at the original review. | Root `LICENSE` and package metadata now declare MIT. |
 
 ### Password-change form detection
 
@@ -82,7 +82,7 @@ review label or approval attestation was created.
 ## Scope and next steps
 
 The 0.3.0 regression tests cover both fixes, including custom password selectors
-and late download completion after session disposal. Choose the license and a permanent plugin ID, then request the Marketplace's manual-setup review
+and late download completion after session disposal. Choose a permanent plugin ID, then request the Marketplace's manual-setup review
 for the installer. A maintainer must review the exact submitted commit under the
 [submission rules](https://github.com/omacom/omarchy-plugin-marketplace/blob/3942261b4943d19359b84e01be149491b800d3bc/SUBMISSION.md)
 and [security policy](https://github.com/omacom/omarchy-plugin-marketplace/blob/3942261b4943d19359b84e01be149491b800d3bc/SECURITY.md).
@@ -151,5 +151,5 @@ and subsequent unlock. Bandit reported no medium/high findings and the two exist
 low subprocess findings, with no scan errors. The Omarchy manifest validated and
 source/wheel builds passed. No live customer portal or real credentials were used.
 
-A root LICENSE and the Marketplace's manual review are still outstanding. This
+The root MIT LICENSE has since been added; the Marketplace's manual review is still outstanding. This
 follow-up documents local fixes and validation, not official maintainer approval.

@@ -7,6 +7,8 @@ name = "omabridge"
 version = "0.4.3"
 description = "Citrix StoreFront launcher for the Omarchy bar"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{name = "FlatHack"}]
 keywords = ["omarchy", "citrix", "storefront", "totp", "quickshell"]
 requires-python = ">=3.11"

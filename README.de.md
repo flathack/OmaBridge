@@ -57,4 +57,6 @@ Zum Löschen der Zugangsdaten vorher die Sites in OmaBridge entfernen.
 [Änderungen](CHANGELOG.md) · [Security-Review](docs/security-review.md)
 
 Entwicklungsversion: Die Kompatibilität muss mit deiner Citrix-Umgebung geprüft werden.
-Die beiden Code-Befunde sind in 0.3.0 behoben. Marketplace-Freigabe und Lizenz stehen noch aus.
+Die gemeldeten Code-Befunde sind bis einschließlich 0.4.3 behoben. Die Marketplace-Freigabe steht noch aus.
+
+Lizenziert unter der [MIT-Lizenz](LICENSE).

@@ -56,4 +56,6 @@ Delete sites in OmaBridge first if you also want to remove saved credentials.
 [Changelog](CHANGELOG.md) · [Security review](docs/security-review.md)
 
 Development version: portal compatibility needs testing with your Citrix setup.
-The two reported code issues are fixed in 0.3.0. Marketplace approval and a license are still pending.
+The reported code issues are fixed through 0.4.3. Marketplace approval is still pending.
+
+Licensed under the [MIT License](LICENSE).
