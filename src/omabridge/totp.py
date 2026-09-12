@@ -54,4 +54,3 @@ class Totp:
 
     def remaining(self, timestamp: float | None = None) -> float:
         return self.period - ((time.time() if timestamp is None else timestamp) % self.period)
-

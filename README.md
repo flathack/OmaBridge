@@ -1,5 +1,7 @@
 # OmaBridge
 
+[![CI](https://github.com/flathack/OmaBridge/actions/workflows/ci.yml/badge.svg)](https://github.com/flathack/OmaBridge/actions/workflows/ci.yml)
+
 Citrix StoreFront aus der **Omarchy-Bar** öffnen: Site auswählen, mit Benutzername,
 Passwort und TOTP anmelden, anschließend eine veröffentlichte App oder einen
 virtuellen Desktop im Citrix-Portal starten.
@@ -33,9 +35,11 @@ virtuellen Desktop im Citrix-Portal starten.
 
 ## Installation
 
-Im Projektverzeichnis:
+Repository klonen und installieren:
 
 ```bash
+git clone https://github.com/flathack/OmaBridge.git
+cd OmaBridge
 ./scripts/install.sh
 ```
 
@@ -105,7 +109,7 @@ OmaBridge füllt nur sichtbare, eindeutige Eingabefelder im Hauptdokument auf de
 gespeicherten HTTPS-Origin aus. Bei Weiterleitung auf einen anderen Host oder Port,
 einer Anmeldung in einem iframe, unbekannten Feldern oder einem Passwortwechsel erfolgt
 keine automatische Übergabe. Dann direkt im Portal fortfahren. Die aktuelle Portal-Adresse
-wird oberhalb des Browsers angezeigt, ohne Query-Parameter und Fragmente.
+wird unter **ⓘ** angezeigt, ohne Query-Parameter und Fragmente.
 
 Jede Feldkombination wird pro Verbindungsversuch höchstens einmal abgeschickt,
 insgesamt maximal drei Schritte. Nach jedem gesendeten Schritt bleiben weitere
@@ -141,6 +145,10 @@ weist OmaBridge auf die nötige HTML5-Auswahl im Portal hin.
   weiter; integrierte HTML5-Tabs schließen zusammen mit ihrer Portal-Sitzung.
 
 ## Entwicklung und Prüfung
+
+Beiträge: [CONTRIBUTING.md](CONTRIBUTING.md). Änderungen:
+[CHANGELOG.md](CHANGELOG.md). Vorbereitung einer Veröffentlichung:
+[docs/releasing.md](docs/releasing.md).
 
 ```bash
 python3 -m venv .venv

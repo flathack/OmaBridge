@@ -1,0 +1,4 @@
+include README.md CHANGELOG.md CONTRIBUTING.md manifest.json BarWidget.qml
+recursive-include scripts *.sh *.py
+recursive-include docs *.md *.png
+recursive-include tests *.py

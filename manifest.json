@@ -3,7 +3,7 @@
   "id": "local.omabridge",
   "name": "OmaBridge",
   "version": "0.2.0",
-  "author": "OmaBridge",
+  "author": "FlatHack",
   "description": "Citrix-Sites auswählen und mit Passwort und TOTP anmelden",
   "kinds": ["bar-widget"],
   "entryPoints": {"barWidget": "BarWidget.qml"},
