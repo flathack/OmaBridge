@@ -1,4 +1,6 @@
 """RFC 6238 TOTP, accepting Base32 keys and otpauth provisioning URIs."""
+from .i18n import tr
+
 import base64
 import hashlib
 import hmac
@@ -22,26 +24,26 @@ class Totp:
         if value.startswith("otpauth:"):
             url = urlsplit(value)
             if url.scheme != "otpauth" or url.netloc != "totp":
-                raise ValueError("Nur TOTP wird unterstützt, kein HOTP.")
+                raise ValueError(tr("Only TOTP is supported, not HOTP."))
             query = parse_qs(url.query)
             if any(len(v) != 1 for v in query.values()):
-                raise ValueError("Mehrdeutige TOTP-Parameter.")
+                raise ValueError(tr("Ambiguous TOTP parameters."))
             value = query.get("secret", [""])[0]
             algorithm = query.get("algorithm", ["sha1"])[0].lower()
             try:
                 digits = int(query.get("digits", ["6"])[0])
                 period = int(query.get("period", ["30"])[0])
             except ValueError as error:
-                raise ValueError("Ungültige TOTP-Parameter.") from error
+                raise ValueError(tr("Invalid TOTP parameters.")) from error
         if algorithm not in {"sha1", "sha256", "sha512"} or digits not in {6, 8} or not 15 <= period <= 120:
-            raise ValueError("TOTP benötigt SHA1/256/512, 6/8 Stellen und 15–120 Sekunden.")
+            raise ValueError(tr("TOTP requires SHA1/256/512, 6/8 digits and a 15–120 second period."))
         key = "".join(value.upper().split()).rstrip("=")
         try:
             secret = base64.b32decode(key + "=" * ((-len(key)) % 8))
         except (ValueError, base64.binascii.Error) as error:
-            raise ValueError("Ungültiger Base32-TOTP-Schlüssel.") from error
+            raise ValueError(tr("Invalid Base32 TOTP secret.")) from error
         if len(secret) < 10:
-            raise ValueError("Einen TOTP-Schlüssel oder otpauth-Link eingeben, keinen Einmalcode.")
+            raise ValueError(tr("Enter a TOTP secret or otpauth link, not a one-time code."))
         return cls(secret, algorithm, digits, period)
 
     def code(self, timestamp: float | None = None) -> str:

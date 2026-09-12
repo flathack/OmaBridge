@@ -1,3 +1,5 @@
+from .i18n import tr
+
 import json
 import os
 import tempfile
@@ -22,17 +24,17 @@ class SiteStore:
         try:
             raw = json.loads(self.path.read_text())
             if raw.get("version") != 1 or not isinstance(raw.get("sites"), list):
-                raise ValueError("Unbekanntes Konfigurationsformat.")
+                raise ValueError(tr("Unknown configuration format."))
             sites = [Site(**item) for item in raw["sites"]]
             if len({s.id for s in sites}) != len(sites):
-                raise ValueError("Doppelte Site-ID.")
+                raise ValueError(tr("Duplicate site ID."))
             return sites
         except (ValueError, TypeError, KeyError, AttributeError) as error:
-            raise ValueError("sites.json ist ungültig. Datei sichern und korrigieren; sie wurde nicht überschrieben.") from error
+            raise ValueError(tr("sites.json is invalid. Back up and correct the file; it has not been overwritten.")) from error
 
     def save(self, sites: list[Site]):
         if len({s.id for s in sites}) != len(sites):
-            raise ValueError("Doppelte Site-ID.")
+            raise ValueError(tr("Duplicate site ID."))
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(self.directory, 0o700)
         fd, name = tempfile.mkstemp(prefix=".sites-", dir=self.directory)
@@ -64,7 +66,7 @@ class SecretVault:
             if collection.is_locked():
                 collection.unlock()
             if collection.is_locked():
-                raise VaultError("Der Schlüsselbund ist gesperrt. Bitte entsperren und erneut versuchen.")
+                raise VaultError(tr("The keyring is locked. Unlock it and try again."))
         except VaultError:
             if connection:
                 connection.close()
@@ -72,7 +74,7 @@ class SecretVault:
         except Exception as error:
             if connection:
                 connection.close()
-            raise VaultError("Linux-Schlüsselbund nicht erreichbar. Secret Service (z. B. GNOME Keyring) starten und entsperren.") from error
+            raise VaultError(tr("Linux keyring unavailable. Start and unlock Secret Service (e.g. GNOME Keyring).")) from error
         try:
             yield collection
         finally:
@@ -95,18 +97,18 @@ class SecretVault:
         except VaultError:
             raise
         except Exception as error:
-            raise VaultError("Zugangsdaten konnten nicht aus dem Schlüsselbund gelesen werden.") from error
+            raise VaultError(tr("Could not read credentials from the keyring.")) from error
 
     def set(self, site_id: str, credentials: Credentials):
         try:
             from dataclasses import asdict
             with self._collection() as collection:
-                collection.create_item("OmaBridge-Zugangsdaten", self._attributes(site_id),
+                collection.create_item(tr("OmaBridge credentials"), self._attributes(site_id),
                                        json.dumps(asdict(credentials)).encode(), replace=True)
         except VaultError:
             raise
         except Exception as error:
-            raise VaultError("Zugangsdaten konnten nicht im Schlüsselbund gespeichert werden.") from error
+            raise VaultError(tr("Could not save credentials to the keyring.")) from error
 
     def delete(self, site_id: str):
         try:
@@ -116,4 +118,4 @@ class SecretVault:
         except VaultError:
             raise
         except Exception as error:
-            raise VaultError("Zugangsdaten konnten nicht aus dem Schlüsselbund gelöscht werden.") from error
+            raise VaultError(tr("Could not delete credentials from the keyring.")) from error

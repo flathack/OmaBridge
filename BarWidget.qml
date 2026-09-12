@@ -13,7 +13,10 @@ Ui.BarWidget {
     property bool popupOpen: false
     property var sites: []
     property string loadError: ""
+    property string language: "en"
     readonly property string launcher: Quickshell.env("HOME") + "/.local/bin/omabridge"
+    function t(english, german) { return root.language === "de" ? german : english }
+    Component.onCompleted: refreshSites()
 
     function close() { popupOpen = false }
     function launch(siteId) {
@@ -50,26 +53,30 @@ Ui.BarWidget {
                 if (root.popupOpen) root.refreshSites()
             }
         }
-        onEntered: if (root.bar) root.bar.showTooltip(root, "OmaBridge · Citrix-Sites\nRechtsklick: Site-Verwaltung")
+        onEntered: {
+            root.refreshSites()
+            if (root.bar) root.bar.showTooltip(root, root.t("OmaBridge · Citrix sites\nRight-click: Manage sites", "OmaBridge · Citrix-Sites\nRechtsklick: Site-Verwaltung"))
+        }
         onExited: if (root.bar) root.bar.hideTooltip(root)
     }
     Process {
         id: reader
-        command: [root.launcher, "--list-sites"]
+        command: [root.launcher, "--bar-state"]
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
                     const parsed = JSON.parse(text)
-                    if (!Array.isArray(parsed)) throw new Error("Invalid sites")
-                    root.sites = parsed
+                    if (!Array.isArray(parsed.sites)) throw new Error("Invalid sites")
+                    root.language = parsed.language === "de" ? "de" : "en"
+                    root.sites = parsed.sites
                 } catch (_) {
                     root.sites = []
-                    root.loadError = "Sites konnten nicht geladen werden. OmaBridge öffnen und Konfiguration prüfen."
+                    root.loadError = root.t("Could not load sites. Open OmaBridge and check the configuration.", "Sites konnten nicht geladen werden. OmaBridge öffnen und Konfiguration prüfen.")
                 }
             }
         }
         onExited: function(exitCode, exitStatus) {
-            if (exitCode !== 0) root.loadError = "OmaBridge nicht verfügbar. Zuerst scripts/install.sh ausführen."
+            if (exitCode !== 0) root.loadError = root.t("OmaBridge is unavailable. Run scripts/install.sh first.", "OmaBridge nicht verfügbar. Zuerst scripts/install.sh ausführen.")
         }
     }
     Ui.PopupCard {
@@ -86,7 +93,7 @@ Ui.BarWidget {
             anchors.fill: parent
             spacing: Style.space(12)
             Text {
-                text: "Citrix-Sites"
+                text: root.t("Citrix sites", "Citrix-Sites")
                 color: root.bar ? root.bar.foreground : "white"
                 font.family: root.bar ? root.bar.fontFamily : "monospace"
                 font.pixelSize: Style.font.subtitle
@@ -95,7 +102,7 @@ Ui.BarWidget {
             Text {
                 width: parent.width
                 visible: root.loadError !== "" || root.sites.length === 0
-                text: root.loadError || (reader.running ? "Sites laden …" : "Noch keine Site gespeichert. Füge deinen StoreFront-Zugang in OmaBridge hinzu.")
+                text: root.loadError || (reader.running ? root.t("Loading sites …", "Sites laden …") : root.t("No saved sites yet. Add your StoreFront connection in OmaBridge.", "Noch keine Site gespeichert. Füge deinen StoreFront-Zugang in OmaBridge hinzu."))
                 textFormat: Text.PlainText
                 wrapMode: Text.WordWrap
                 color: root.bar ? root.bar.foreground : "white"
@@ -161,7 +168,7 @@ Ui.BarWidget {
                 }
             }
             Ui.Button {
-                text: "Sites verwalten"
+                text: root.t("Manage sites", "Sites verwalten")
                 foreground: root.bar ? root.bar.foreground : "white"
                 onClicked: root.launch("")
             }

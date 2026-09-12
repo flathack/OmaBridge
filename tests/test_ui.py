@@ -202,4 +202,76 @@ def test_menu_status_does_not_cover_portal(app, tab_window):
 def test_unknown_site_id_does_not_connect_another_site(app, tab_window):
     tab_window.open_site_id("missing-site")
     assert not tab_window.jobs and not tab_window.sessions
-    assert "nicht gefunden" in tab_window.status.message
+    assert "not found" in tab_window.status.message
+
+
+def test_language_settings_apply_live_and_persist_without_reconnecting(app, tab_window):
+    from omabridge.ui import SettingsDialog
+    from omabridge.i18n import language
+    from PySide6.QtWebEngineCore import QWebEnginePage
+    window = tab_window
+    window.connect_site()
+    wait_for(app, lambda: not window.jobs)
+    session = window.sessions[window.sites[0].id]
+    popup = session.page.createWindow(QWebEnginePage.WebWindowType.WebBrowserTab)
+    view = window.current_view()
+    site_names = [site.name for site in window.sites]
+    assert language() == 'en' and window.settings_action.text() == 'Settings'
+    def select_german():
+        dialog = QApplication.activeModalWidget()
+        assert isinstance(dialog, SettingsDialog)
+        assert dialog.windowTitle() == 'Settings'
+        dialog.language.setCurrentIndex(dialog.language.findData('de'))
+        dialog.accept()
+    QTimer.singleShot(0, select_german)
+    window.open_settings()
+    assert language() == 'de'
+    assert window.settings_action.text() == 'Einstellungen'
+    assert window.edit_action.text() == 'Site bearbeiten …'
+    assert window.back_button.toolTip() == 'Zurück (Alt+Links)'
+    assert window.preferences.load() == 'de'
+    assert window.sessions[window.sites[0].id] is session
+    assert window.current_view() is view and view.page() is popup
+    assert [site.name for site in window.sites] == site_names
+    dialog = SiteDialog(window)
+    assert dialog.windowTitle() == 'Citrix-Site hinzufügen'
+    assert dialog.password.accessibleName() == 'Passwort'
+    dialog.close()
+    dialog.deleteLater()
+    window.close()
+    reopened = MainWindow(window.store, MemoryVault())
+    assert reopened.settings_action.text() == 'Einstellungen'
+    reopened.change_language('en')
+    assert reopened.settings_action.text() == 'Settings'
+    assert reopened.preferences.load() == 'en'
+    dialog = SiteDialog(reopened)
+    assert dialog.password.accessibleName() == 'Password'
+    dialog.close()
+    dialog.deleteLater()
+    reopened.close()
+    reopened.deleteLater()
+
+
+def test_language_save_failure_preserves_current_language(app, tab_window, monkeypatch):
+    from omabridge.i18n import language
+    window = tab_window
+    errors = []
+    window.show_error = errors.append
+    def fail(_):
+        raise OSError('Disk full')
+    monkeypatch.setattr(window.preferences, 'save', fail)
+    window.change_language('de')
+    assert errors and language() == 'en'
+    assert window.settings_action.text() == 'Settings'
+
+
+def test_cancel_language_settings_does_not_change_preference(app, tab_window):
+    from omabridge.i18n import language
+    def cancel():
+        dialog = QApplication.activeModalWidget()
+        dialog.language.setCurrentIndex(1)
+        dialog.reject()
+    QTimer.singleShot(0, cancel)
+    tab_window.open_settings()
+    assert language() == 'en'
+    assert not tab_window.preferences.path.exists()

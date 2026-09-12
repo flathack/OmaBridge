@@ -1,3 +1,6 @@
+from .i18n import tr, set_language, language
+from .preferences import PreferencesStore
+
 import argparse
 import json
 import os
@@ -7,13 +10,20 @@ from .storage import SiteStore
 
 
 def main():
-    parser = argparse.ArgumentParser(description="OmaBridge · Citrix für Omarchy")
-    parser.add_argument("--site", help="Gespeicherte Site-ID öffnen")
-    parser.add_argument("--list-sites", action="store_true", help="Sites als JSON ausgeben (ohne Zugangsdaten)")
+    try:
+        set_language(PreferencesStore().load())
+    except (ValueError, OSError) as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    parser = argparse.ArgumentParser(description=tr("OmaBridge · Citrix for Omarchy"))
+    parser.add_argument("--site", help=tr("Open a saved site ID"))
+    parser.add_argument("--list-sites", action="store_true", help=tr("List sites as JSON (without credentials)"))
+    parser.add_argument("--bar-state", action="store_true", help=tr("Bar language and sites as JSON (without credentials)"))
     args = parser.parse_args()
-    if args.list_sites:
+    if args.list_sites or args.bar_state:
         try:
-            print(json.dumps([{"id": s.id, "name": s.name, "mode": s.mode} for s in SiteStore().load()], ensure_ascii=False))
+            sites = [{"id": s.id, "name": s.name, "mode": s.mode} for s in SiteStore().load()]
+            print(json.dumps({"language": language(), "sites": sites} if args.bar_state else sites, ensure_ascii=False))
         except (ValueError, OSError) as error:
             print(str(error), file=sys.stderr)
             return 1
@@ -40,13 +50,13 @@ def main():
     from PySide6.QtCore import QLockFile, QStandardPaths
     lock = QLockFile(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.RuntimeLocation) + "/omabridge.lock")
     if not lock.tryLock(1000):
-        print("OmaBridge startet bereits. Bitte erneut öffnen.", file=sys.stderr)
+        print(tr("OmaBridge is already starting. Please try opening it again."), file=sys.stderr)
         return 1
     QLocalServer.removeServer(server_name)
     server = QLocalServer()
     server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
     if not server.listen(server_name):
-        print("OmaBridge-IPC konnte nicht gestartet werden.", file=sys.stderr)
+        print(tr("Could not start OmaBridge IPC."), file=sys.stderr)
         return 1
     try:
         window = MainWindow()

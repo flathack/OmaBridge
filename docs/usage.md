@@ -56,10 +56,12 @@ use the script for a complete installation.
 
 ## Your first connection
 
-The app currently uses German UI labels; the instructions below include those
-labels so you can find the corresponding controls.
+English is the default UI language. Switch under **⋮ → Settings → Language**.
+The choice is saved in `~/.config/omabridge/settings.json` and applies immediately
+to the app; the bar picks it up when opened again. Existing sessions stay open.
+Portal content uses its own language settings.
 
-1. Click **Citrix → Sites verwalten** (manage sites) in the bar, then **+** at the top of OmaBridge.
+1. Click **Citrix → Manage sites** in the bar, then **+** at the top of OmaBridge.
 2. Enter a name and the full **Receiver for Web URL**, for example
    `https://citrix.firma.de/Citrix/StoreWeb/`. Do not save a URL containing a session ticket.
 3. Enter your username, password and **TOTP secret**. Base32 secrets and
@@ -72,7 +74,7 @@ labels so you can find the corresponding controls.
 For client selection, OmaBridge recognizes common English and German buttons such
 as “Use web browser”, “Webbrowser verwenden” and “Already installed”. If your portal
 uses different controls, select the client manually once or configure a selector
-under **Anmeldeformular anpassen** (customize sign-in form). The launch mode is a saved
+under **Customize sign-in form**. The launch mode is a saved
 preference that automatically operates recognized portal buttons; it cannot enable
 features blocked by the server or override every existing portal preference.
 Changing modes later may require another selection in the portal.
@@ -84,7 +86,7 @@ context. Browser mode never launches a native ICA session by accident.
 The top bar stays visible. **⋮** contains site settings, launch mode, sign-in and
 fullscreen controls; **ⓘ** shows status and the portal address. **F11** toggles fullscreen,
 **Ctrl+Tab** switches tabs, and **Ctrl+W** closes the current tab. Closed sites remain
-saved and can be reopened under **⋮ → Gespeicherte Sites** (saved sites).
+saved and can be reopened under **⋮ → Saved sites**.
 HTML5 apps and desktops open in their own tabs; closing their parent site tab also
 closes these session tabs. Native Workspace windows remain independent.
 
@@ -92,7 +94,7 @@ closes these session tabs. Native Workspace windows remain independent.
 
 Default detection includes `#username`, `#password`, `#otp`, `#passwd1`, common `name`
 attributes and `autocomplete` values. Configure custom portals under
-**⋮ → Site bearbeiten → Anmeldeformular anpassen** (edit site → customize sign-in form):
+**⋮ → Edit site → Customize sign-in form**:
 
 | Field | Example CSS selector |
 | --- | --- |
@@ -118,8 +120,8 @@ available under **ⓘ**, with query parameters and fragments removed.
 Each field combination is submitted at most once per connection attempt, with a
 maximum of three steps overall. Each submitted step starts a new 90-second window
 for the next form. If an error appears, check your credentials first.
-**Anmeldung erneut** (retry sign-in) explicitly allows another attempt;
-**Automatik pausieren** (pause automation) stops further automatic steps.
+**Retry sign-in** explicitly allows another attempt;
+**Pause automation** stops further automatic steps.
 TOTP codes with fewer than five seconds remaining are not used.
 
 If the keyring is unavailable, OmaBridge displays an error rather than falling back
@@ -144,7 +146,7 @@ select HTML5 in the portal.
   a five-minute timeout and app shutdown provide ticket cleanup.
 - The Chromium sandbox and certificate validation remain enabled. Portal console
   logs are suppressed. OmaBridge has no telemetry or remote data storage.
-- **Tab schließen** (close tab) on a site tab discards the local context. This is not
+- **Close tab** on a site tab discards the local context. This is not
   a server-side logoff; sign out in the Citrix portal first if needed. Native Workspace
   sessions continue independently; integrated HTML5 tabs close with their portal session.
 

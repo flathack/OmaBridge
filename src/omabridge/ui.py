@@ -1,3 +1,6 @@
+from .i18n import tr, language, set_language, retranslate, apply_qt_language, ENGLISH
+from .preferences import PreferencesStore
+
 from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
@@ -107,12 +110,12 @@ class SiteDialog(QDialog):
         self.site = site
         self.value = None
         credentials = credentials or Credentials()
-        self.setWindowTitle("Site bearbeiten" if site else "Citrix-Site hinzufügen")
+        self.setWindowTitle(tr("Edit site") if site else tr("Add Citrix site"))
         self.resize(640, 760)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(24, 24, 24, 24)
-        outer.addWidget(label("Site bearbeiten" if site else "Dein nächster Arbeitsplatz", "title"))
-        outer.addWidget(label("StoreFront-Zugang und Startmodus an einem Ort.", "muted"))
+        outer.addWidget(label(tr("Edit site") if site else tr("Your next workspace"), "title"))
+        outer.addWidget(label(tr("StoreFront credentials and launch mode in one place."), "muted"))
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         body = QWidget()
@@ -120,49 +123,49 @@ class SiteDialog(QDialog):
         form.setVerticalSpacing(16)
         form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.name = QLineEdit(site.name if site else "")
-        self.name.setPlaceholderText("z. B. Büro oder Kunde")
+        self.name.setPlaceholderText(tr("e.g. Office or Customer"))
         self.url = QLineEdit(site.url if site else "")
         self.url.setPlaceholderText("https://citrix.firma.de/Citrix/StoreWeb/")
         self.username = QLineEdit(credentials.username)
-        self.username.setPlaceholderText("DOMÄNE\\Benutzer oder name@firma.de")
+        self.username.setPlaceholderText(tr("DOMAIN\\user or name@company.com"))
         self.password = QLineEdit(credentials.password)
         self.password.setEchoMode(QLineEdit.EchoMode.Password)
         self.totp = QLineEdit(credentials.totp)
         self.totp.setEchoMode(QLineEdit.EchoMode.Password)
-        self.totp.setPlaceholderText("Base32-Schlüssel oder otpauth://totp/…")
+        self.totp.setPlaceholderText(tr("Base32 secret or otpauth://totp/…"))
         self.mode = QComboBox()
         self.mode.addItem("Citrix Workspace App", "workspace")
-        self.mode.addItem("Browser · HTML5 in OmaBridge", "browser")
+        self.mode.addItem(tr("Browser · HTML5 in OmaBridge"), "browser")
         self.mode.setCurrentIndex(1 if site and site.mode == "browser" else 0)
-        self.auto = QCheckBox("Nach Auswahl der Site automatisch anmelden")
+        self.auto = QCheckBox(tr("Sign in automatically when selecting a site"))
         self.auto.setChecked(site.auto_login if site else True)
-        for text, widget in [("Name", self.name), ("Portal-URL", self.url), ("Benutzername", self.username),
-                             ("Passwort", self.password), ("TOTP-Schlüssel", self.totp), ("Öffnen mit", self.mode)]:
+        for text, widget in [("Name", self.name), (tr("Portal URL"), self.url), (tr("Username"), self.username),
+                             (tr("Password"), self.password), (tr("TOTP secret"), self.totp), (tr("Open with"), self.mode)]:
             form.addRow(text, widget)
             widget.setAccessibleName(text)
-        form.addRow("", label("Gespeichert wird der TOTP-Schlüssel. Daraus entsteht bei jeder Anmeldung ein neuer Einmalcode.", "muted"))
+        form.addRow("", label(tr("The TOTP secret is stored and used to generate a fresh code for each sign-in."), "muted"))
         form.addRow("", self.auto)
-        form.addRow("", label("Benutzername, Passwort und TOTP bleiben im Linux-Schlüsselbund. Leere Geheimnisfelder entfernen den bisherigen Wert.", "muted"))
-        self.advanced = QCheckBox("Anmeldeformular anpassen")
+        form.addRow("", label(tr("Username, password and TOTP are stored in the Linux keyring. Empty credential fields remove the saved value."), "muted"))
+        self.advanced = QCheckBox(tr("Customize sign-in form"))
         form.addRow("", self.advanced)
         advanced = QWidget()
         advanced_form = QFormLayout(advanced)
         advanced_form.setContentsMargins(0, 0, 0, 0)
         self.selectors = {}
         for role, title, placeholder in [
-            ("username", "Benutzername", "Automatisch · z. B. #username"),
-            ("password", "Passwort", "Automatisch · z. B. #password"),
-            ("otp", "TOTP", "Automatisch · z. B. #otp"),
-            ("submit", "Anmelde-Button", "Automatisch · z. B. #loginBtn"),
-            ("browser", "Browser-Auswahl", "Optionaler CSS-Selektor"),
-            ("workspace", "Workspace-Auswahl", "Optionaler CSS-Selektor"),
+            ("username", tr("Username"), tr("Automatic · e.g. #username")),
+            ("password", tr("Password"), tr("Automatic · e.g. #password")),
+            ("otp", "TOTP", tr("Automatic · e.g. #otp")),
+            ("submit", tr("Sign-in button"), tr("Automatic · e.g. #loginBtn")),
+            ("browser", tr("Browser selection"), tr("Optional CSS selector")),
+            ("workspace", tr("Workspace selection"), tr("Optional CSS selector")),
         ]:
             entry = QLineEdit(site.selectors.get(role, "") if site else "")
             entry.setPlaceholderText(placeholder)
-            entry.setAccessibleName(title + " CSS-Selektor")
+            entry.setAccessibleName(title + tr(" CSS selector"))
             self.selectors[role] = entry
             advanced_form.addRow(title, entry)
-        advanced_form.addRow(label("Nur nötig, wenn dein Portal andere Feldnamen oder Startmodus-Schaltflächen verwendet.", "muted"))
+        advanced_form.addRow(label(tr("Only needed if your portal uses different field names or client selection buttons."), "muted"))
         form.addRow(advanced)
         advanced.setVisible(False)
         self.advanced.toggled.connect(advanced.setVisible)
@@ -173,9 +176,9 @@ class SiteDialog(QDialog):
         self.error = label("", "muted")
         outer.addWidget(self.error)
         actions = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        actions.button(QDialogButtonBox.StandardButton.Save).setText("Site speichern")
+        actions.button(QDialogButtonBox.StandardButton.Save).setText(tr("Save site"))
         actions.button(QDialogButtonBox.StandardButton.Save).setObjectName("primary")
-        actions.button(QDialogButtonBox.StandardButton.Cancel).setText("Abbrechen")
+        actions.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("Cancel"))
         actions.accepted.connect(self.validate)
         actions.rejected.connect(self.reject)
         outer.addWidget(actions)
@@ -201,13 +204,13 @@ class StatusNotice(QToolButton):
     """Connection details live in the top row, never over the remote screen."""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.message = "Bereit. Site auswählen oder mit + hinzufügen."
+        self.message = tr("Ready. Select a site or add one with +.")
         self.address = ""
         self.setFixedSize(30, 30)
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         self.setStyleSheet("QToolButton:enabled { color: #dce7f5; }")
         super().setText("ⓘ")
-        self.setAccessibleName("Verbindungsstatus und Portal-Adresse")
+        self.setAccessibleName(tr("Connection status and portal address"))
         self.clicked.connect(self.show_details)
         self.refresh_tooltip()
 
@@ -224,16 +227,44 @@ class StatusNotice(QToolButton):
 
     def show_details(self):
         dialog = QMessageBox(self)
-        dialog.setWindowTitle("Verbindungsstatus")
+        dialog.setWindowTitle(tr("Connection status"))
         dialog.setTextFormat(Qt.TextFormat.PlainText)
         dialog.setText(self.toolTip())
+        dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
+        dialog.button(QMessageBox.StandardButton.Ok).setText(tr("OK"))
         dialog.exec()
+
+
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(tr("Settings"))
+        self.setMinimumWidth(420)
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        self.language = QComboBox()
+        self.language.addItem("English", "en")
+        self.language.addItem("Deutsch", "de")
+        self.language.setCurrentIndex(self.language.findData(language()))
+        self.language.setAccessibleName(tr("Language"))
+        form.addRow(tr("Language"), self.language)
+        layout.addLayout(form)
+        layout.addWidget(label(tr("Applies immediately. Open Citrix sessions stay connected.")))
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText(tr("Save"))
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("Cancel"))
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
 
 
 class MainWindow(QMainWindow):
     def __init__(self, store=None, vault=None):
         super().__init__()
         self.store = store or SiteStore()
+        self.preferences = PreferencesStore(self.store.directory)
+        set_language(self.preferences.load())
+        apply_qt_language()
         self.vault = vault or SecretVault()
         self.sites = self.store.load()
         self.sessions = {}
@@ -258,13 +289,13 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout(self.toolbar)
         row.setContentsMargins(6, 3, 6, 3)
         row.setSpacing(3)
-        self.back_button = self.nav_button("←", "Zurück (Alt+Links)", lambda: self.navigate("back"))
-        self.forward_button = self.nav_button("→", "Vorwärts (Alt+Rechts)", lambda: self.navigate("forward"))
-        self.reload_button = self.nav_button("↻", "Neu laden (Ctrl+R)", lambda: self.navigate("reload"))
+        self.back_button = self.nav_button("←", tr("Back (Alt+Left)"), lambda: self.navigate("back"))
+        self.forward_button = self.nav_button("→", tr("Forward (Alt+Right)"), lambda: self.navigate("forward"))
+        self.reload_button = self.nav_button("↻", tr("Reload (Ctrl+R)"), lambda: self.navigate("reload"))
         for control in (self.back_button, self.forward_button, self.reload_button):
             row.addWidget(control)
         self.tabs = QTabBar()
-        self.tabs.setAccessibleName("Citrix-Sites und Sitzungen")
+        self.tabs.setAccessibleName(tr("Citrix sites and sessions"))
         self.tabs.setExpanding(False)
         self.tabs.setMovable(False)
         self.tabs.setTabsClosable(True)
@@ -275,37 +306,38 @@ class MainWindow(QMainWindow):
         self.tabs.tabBarClicked.connect(lambda _: self.connect_site())
         self.tabs.tabCloseRequested.connect(self.close_tab)
         row.addWidget(self.tabs, 1)
-        self.add_button = self.nav_button("+", "Site hinzufügen (Ctrl+T)", self.add_site)
+        self.add_button = self.nav_button("+", tr("Add site (Ctrl+T)"), self.add_site)
         row.addWidget(self.add_button)
         self.status = StatusNotice()
         row.addWidget(self.status)
-        self.menu_button = self.nav_button("⋮", "OmaBridge-Menü", lambda: None)
+        self.menu_button = self.nav_button("⋮", tr("OmaBridge menu"), lambda: None)
         self.menu_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.menu = QMenu(self)
         self.menu_button.setMenu(self.menu)
         row.addWidget(self.menu_button)
-        self.sites_menu = self.menu.addMenu("Gespeicherte Sites")
+        self.sites_menu = self.menu.addMenu(tr("Saved sites"))
         self.sites_menu.aboutToShow.connect(self.populate_sites_menu)
-        self.edit_action = self.add_action("Site bearbeiten …", self.edit_site)
-        self.delete_action = self.add_action("Site entfernen …", self.delete_site)
-        self.connect_action = self.add_action("Portal öffnen", self.connect_site)
-        mode_menu = self.menu.addMenu("Öffnen mit")
+        self.edit_action = self.add_action(tr("Edit site …"), self.edit_site)
+        self.delete_action = self.add_action(tr("Remove site …"), self.delete_site)
+        self.connect_action = self.add_action(tr("Open portal"), self.connect_site)
+        self.mode_menu = self.menu.addMenu(tr("Open with"))
         self.mode_group = QActionGroup(self)
         self.mode_group.setExclusive(True)
         self.mode_actions = {}
         for title, mode in (("Citrix Workspace", "workspace"), ("Browser · HTML5", "browser")):
-            action = mode_menu.addAction(title)
+            action = self.mode_menu.addAction(title)
             action.setCheckable(True)
             self.mode_group.addAction(action)
             action.triggered.connect(lambda checked=False, mode=mode: self.change_mode(mode))
             self.mode_actions[mode] = action
         self.menu.addSeparator()
-        self.retry_action = self.add_action("Anmeldung erneut", self.retry)
-        self.pause_action = self.add_action("Automatik pausieren", self.pause)
-        self.close_action = self.add_action("Tab schließen", self.close_current_tab, "Ctrl+W")
+        self.retry_action = self.add_action(tr("Retry sign-in"), self.retry)
+        self.pause_action = self.add_action(tr("Pause automation"), self.pause)
+        self.close_action = self.add_action(tr("Close tab"), self.close_current_tab, "Ctrl+W")
         self.menu.addSeparator()
-        self.add_action("Vollbild", self.toggle_fullscreen, "F11")
-        self.add_action("Beenden", self.close, "Ctrl+Q")
+        self.settings_action = self.add_action(tr("Settings"), self.open_settings)
+        self.add_action(tr("Fullscreen"), self.toggle_fullscreen, "F11")
+        self.add_action(tr("Quit"), self.close, "Ctrl+Q")
         self.add_action("", self.add_site, "Ctrl+T", visible=False)
         self.add_action("", lambda: self.navigate("back"), "Alt+Left", visible=False)
         self.add_action("", lambda: self.navigate("forward"), "Alt+Right", visible=False)
@@ -322,10 +354,10 @@ class MainWindow(QMainWindow):
         self.empty_title = label("OmaBridge", "title")
         self.empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty_layout.addWidget(self.empty_title)
-        self.empty_hint = label("Wähle oben eine Site oder füge mit + einen Zugang hinzu.", "muted")
+        self.empty_hint = label(tr("Select a site above or add one with +."), "muted")
         self.empty_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty_layout.addWidget(self.empty_hint)
-        self.empty_connect = button("Portal öffnen", self.connect_site)
+        self.empty_connect = button(tr("Open portal"), self.connect_site)
         empty_layout.addWidget(self.empty_connect, 0, Qt.AlignmentFlag.AlignHCenter)
         empty_layout.addStretch()
         self.stack.addWidget(self.empty)
@@ -340,12 +372,14 @@ class MainWindow(QMainWindow):
         control.setText(text)
         control.setToolTip(tooltip)
         control.setAccessibleName(tooltip)
+        control.source_tooltip = ENGLISH.get(tooltip, tooltip)
         control.setFixedSize(30, 30)
         control.clicked.connect(action)
         return control
 
     def add_action(self, text, callback, shortcut=None, visible=True):
         action = QAction(text, self)
+        action.source_text = ENGLISH.get(text, text)
         action.triggered.connect(lambda checked=False: callback())
         if shortcut:
             action.setShortcut(QKeySequence(shortcut))
@@ -353,6 +387,38 @@ class MainWindow(QMainWindow):
         if visible:
             self.menu.addAction(action)
         return action
+
+    def open_settings(self):
+        if self.mutating:
+            return
+        dialog = SettingsDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.change_language(dialog.language.currentData())
+        dialog.deleteLater()
+
+    def change_language(self, value):
+        # Persist first: a failed write leaves the current UI and preference intact.
+        try:
+            self.preferences.save(value)
+        except (OSError, ValueError) as error:
+            self.show_error(error)
+            return
+        set_language(value)
+        apply_qt_language()
+        for action in self.actions():
+            if hasattr(action, "source_text"):
+                action.setText(tr(action.source_text))
+        for control in (self.back_button, self.forward_button, self.reload_button, self.add_button, self.menu_button):
+            control.setToolTip(tr(control.source_tooltip))
+            control.setAccessibleName(tr(control.source_tooltip))
+        self.sites_menu.setTitle(tr("Saved sites"))
+        self.mode_menu.setTitle(tr("Open with"))
+        self.tabs.setAccessibleName(tr("Citrix sites and sessions"))
+        self.status.setAccessibleName(tr("Connection status and portal address"))
+        self.empty_connect.setText(tr("Open portal"))
+        self.messages = {key: retranslate(message) for key, message in self.messages.items()}
+        self.refresh()
+        self.status.setText(tr("Language changed."))
 
     def run_job(self, operation, callback):
         self.mutating = True
@@ -390,6 +456,7 @@ class MainWindow(QMainWindow):
             action.setEnabled(enabled and site.id in self.sessions if site else False)
         self.close_action.setEnabled(bool(self.tabs.count()) and not self.mutating)
         self.add_button.setEnabled(not self.mutating)
+        self.settings_action.setEnabled(not self.mutating)
         self.tabs.setEnabled(not self.mutating)
         view = self.current_view()
         self.back_button.setEnabled(bool(view) and view.history().canGoBack() and not self.mutating)
@@ -417,7 +484,7 @@ class MainWindow(QMainWindow):
             if key == site.id:
                 selected = index
         for token, (owner, view) in self.popup_tabs.items():
-            index = self.tabs.addTab(view.title() or "Citrix-Sitzung")
+            index = self.tabs.addTab(view.title() or tr("Citrix session"))
             self.tabs.setTabData(index, token)
             if key == token:
                 selected = index
@@ -431,10 +498,10 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(page or self.empty)
         self.setWindowTitle((site.name + " · OmaBridge") if site else "OmaBridge")
         self.empty_title.setText(site.name if site else "OmaBridge")
-        self.empty_hint.setText("Site-Tab anklicken oder Portal öffnen." if site else "Wähle eine gespeicherte Site im Menü oder füge mit + einen Zugang hinzu.")
+        self.empty_hint.setText(tr("Click the site tab or open the portal.") if site else tr("Choose a saved site from the menu or add one with +."))
         view = self.current_view()
         self.status.set_address(display_address(view.url()) if view else (site.url if site else ""))
-        self.status.setText(self.messages.get(site.id, "Bereit.") if site else "Bereit.")
+        self.status.setText(self.messages.get(site.id, tr("Ready.")) if site else tr("Ready."))
         self.set_controls()
         if connect and site and not page:
             self.connect_site()
@@ -445,7 +512,7 @@ class MainWindow(QMainWindow):
             action = self.sites_menu.addAction(site.name)
             action.triggered.connect(lambda checked=False, site_id=site.id: self.open_site_id(site_id))
         if not self.sites:
-            self.sites_menu.addAction("Noch keine Sites gespeichert").setEnabled(False)
+            self.sites_menu.addAction(tr("No saved sites yet")).setEnabled(False)
 
     def show_session_message(self, site_id, text):
         self.messages[site_id] = text
@@ -479,7 +546,7 @@ class MainWindow(QMainWindow):
         session.popups.append(view)
         self.stack.addWidget(view)
         self.tabs.blockSignals(True)
-        index = self.tabs.addTab("Citrix-Sitzung")
+        index = self.tabs.addTab(tr("Citrix session"))
         self.tabs.setTabData(index, token)
         self.tabs.setCurrentIndex(index)
         self.tabs.blockSignals(False)
@@ -492,7 +559,7 @@ class MainWindow(QMainWindow):
     def popup_title(self, token, title):
         for index in range(self.tabs.count()):
             if self.tabs.tabData(index) == token:
-                self.tabs.setTabText(index, title[:100] or "Citrix-Sitzung")
+                self.tabs.setTabText(index, title[:100] or tr("Citrix session"))
                 break
 
     def close_popup(self, view):
@@ -531,6 +598,8 @@ class MainWindow(QMainWindow):
         box.setIcon(QMessageBox.Icon.Warning)
         box.setTextFormat(Qt.TextFormat.PlainText)
         box.setText(str(error))
+        box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        box.button(QMessageBox.StandardButton.Ok).setText(tr("OK"))
         box.exec()
 
     def add_site(self):
@@ -542,7 +611,7 @@ class MainWindow(QMainWindow):
         site = self.current_site()
         if not site or self.mutating:
             return
-        self.status.setText("Zugangsdaten aus dem Schlüsselbund laden …")
+        self.status.setText(tr("Loading credentials from the keyring …"))
         self.run_job(lambda: self.vault.get(site.id), lambda credentials, error:
                      self.show_error(error) if error else self.edit_dialog(site, credentials))
 
@@ -576,8 +645,8 @@ class MainWindow(QMainWindow):
             self.remove_session(updated.id)
             self.sites = new_sites
             self.refresh(updated.id)
-            self.status.setText("Site gespeichert. Zum Öffnen den Site-Tab anklicken.")
-        self.status.setText("Im Schlüsselbund speichern …")
+            self.status.setText(tr("Site saved. Click its tab to open it."))
+        self.status.setText(tr("Saving to the keyring …"))
         self.run_job(save, done)
 
     def delete_site(self):
@@ -585,10 +654,12 @@ class MainWindow(QMainWindow):
         if not site:
             return
         box = QMessageBox(self)
-        box.setWindowTitle("Site entfernen")
+        box.setWindowTitle(tr("Remove site"))
         box.setTextFormat(Qt.TextFormat.PlainText)
-        box.setText(f"„{site.name}“ und die zugehörigen Zugangsdaten entfernen?")
+        box.setText(tr("Remove “{name}” and its saved credentials?", name=site.name))
         box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
+        box.button(QMessageBox.StandardButton.Yes).setText(tr("Yes"))
+        box.button(QMessageBox.StandardButton.Cancel).setText(tr("Cancel"))
         box.setDefaultButton(QMessageBox.StandardButton.Cancel)
         if box.exec() != QMessageBox.StandardButton.Yes:
             return
@@ -608,7 +679,7 @@ class MainWindow(QMainWindow):
             self.remove_session(site.id)
             self.sites = new_sites
             self.refresh()
-            self.status.setText("Site und Zugangsdaten entfernt.")
+            self.status.setText(tr("Site and credentials removed."))
         self.run_job(remove, done)
 
     def change_mode(self, mode):
@@ -628,7 +699,7 @@ class MainWindow(QMainWindow):
         if session:
             session.site = updated
         self.refresh(site.id)
-        self.status.setText("Startmodus gespeichert. Falls das Portal bereits einen Client gewählt hat, dort den Startmodus ebenfalls umstellen.")
+        self.status.setText(tr("Launch mode saved. If the portal has already selected a client, change its mode there too."))
 
     def connect_site(self):
         site = self.current_site()
@@ -638,7 +709,7 @@ class MainWindow(QMainWindow):
             self.selected(self.tabs.currentIndex())
             return
         if site.mode == "workspace" and not workspace_executable():
-            self.status.setText("Citrix Workspace ist nicht installiert. Du kannst dich anmelden; zum Starten Workspace installieren oder Browser-Modus wählen.")
+            self.status.setText(tr("Citrix Workspace is not installed. You can sign in; install Workspace or select browser mode to launch a session."))
         def connected(credentials, error):
             if error:
                 self.show_error(error)
@@ -658,7 +729,7 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentWidget(session)
             session.start()
             self.set_controls()
-        self.status.setText("Schlüsselbund öffnen …")
+        self.status.setText(tr("Opening the keyring …"))
         self.run_job(lambda: self.vault.get(site.id), connected)
 
     def open_site_id(self, site_id):
@@ -667,13 +738,13 @@ class MainWindow(QMainWindow):
         # Reload so changes from the bar's on-disk list are reflected.
         self.sites = self.store.load()
         if not any(site.id == site_id for site in self.sites):
-            self.status.setText("Diese Site wurde nicht gefunden.")
+            self.status.setText(tr("This site was not found."))
             return
         self.refresh(site_id)
         if self.current_site():
             self.connect_site()
         else:
-            self.status.setText("Diese Site wurde nicht gefunden.")
+            self.status.setText(tr("This site was not found."))
 
     def retry(self):
         site = self.current_site()
@@ -700,11 +771,11 @@ class MainWindow(QMainWindow):
         if site:
             self.remove_session(site.id)
             self.selected(0)
-            self.status.setText("Lokale Portal-Sitzung geschlossen. Workspace-Sitzungen laufen separat weiter. Serverseitig bei Bedarf im Citrix-Portal abmelden.")
+            self.status.setText(tr("Local portal session closed. Workspace sessions continue separately. Sign out in the Citrix portal if needed."))
 
     def closeEvent(self, event):
         if self.jobs:
-            self.status.setText("Bitte warten, bis der Schlüsselbund-Vorgang abgeschlossen ist.")
+            self.status.setText(tr("Please wait for the keyring operation to finish."))
             event.ignore()
             return
         for site_id in list(self.sessions):

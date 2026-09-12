@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "id": "local.omabridge",
   "name": "OmaBridge",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "FlatHack",
-  "description": "Citrix-Sites auswählen und mit Passwort und TOTP anmelden",
+  "description": "Automatically sign in to Citrix remote sites with password and TOTP",
   "kinds": ["bar-widget"],
   "entryPoints": {"barWidget": "BarWidget.qml"},
   "barWidget": {
     "displayName": "OmaBridge",
-    "description": "Citrix StoreFront, Workspace und HTML5",
+    "description": "Citrix StoreFront, Workspace and HTML5",
     "category": "Connectivity",
     "allowMultiple": false,
     "defaultSection": "right"

@@ -10,7 +10,7 @@ from PySide6.QtGui import QColor
 from omabridge.browser import PortalSession
 from omabridge.models import Credentials, Site
 from omabridge.storage import SiteStore
-from omabridge.ui import MainWindow, SiteDialog
+from omabridge.ui import MainWindow, SiteDialog, SettingsDialog
 
 app = QApplication([])
 destination = Path(__file__).resolve().parents[1] / "docs"
@@ -25,8 +25,13 @@ with tempfile.TemporaryDirectory() as directory:
     app.processEvents()
     dialog.grab().save(str(destination / "add-site.png"))
     dialog.close()
+    settings = SettingsDialog(window)
+    settings.show()
+    app.processEvents()
+    settings.grab().save(str(destination / "settings.png"))
+    settings.close()
     window.close()
-    store.save([Site("Büro · Demo", "https://citrix.example.test"), Site("Kunde · Demo", "https://customer.example.test")])
+    store.save([Site("Office · Demo", "https://citrix.example.test"), Site("Customer · Demo", "https://customer.example.test")])
     window = MainWindow(store)
     # Inert portal preview, not a real Citrix session or network request.
     site = window.sites[0]
@@ -40,7 +45,7 @@ with tempfile.TemporaryDirectory() as directory:
     window.show()
     page = window.open_popup(session)
     page.setBackgroundColor(QColor('#eef1f5'))
-    window.popup_title(window.current_key(), "Virtueller Desktop · Demo")
+    window.popup_title(window.current_key(), "Virtual desktop · Demo")
     app.processEvents()
     window.grab().save(str(destination / "tabs.png"))
     window.close()

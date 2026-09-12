@@ -55,6 +55,13 @@ Eine erneute Ausführung aktualisiert App und Widget. Der Schlüsselbund und die
 gespeicherten Sites bleiben erhalten. `omarchy plugin add` allein installiert die
 Python-App nicht; für die vollständige Installation das Skript verwenden.
 
+## Sprache
+
+Standard ist Englisch. Unter **⋮ → Settings → Language → Deutsch** stellst du
+die App auf Deutsch. Die Auswahl steht in `~/.config/omabridge/settings.json`
+und gilt sofort; das Bar-Menü übernimmt sie beim nächsten Öffnen. Bestehende
+Sitzungen bleiben erhalten. Die Sprache des Citrix-Portals wird dort eingestellt.
+
 ## Erste Verbindung
 
 1. In der Bar auf **Citrix → Sites verwalten** klicken und in OmaBridge oben **+** wählen.

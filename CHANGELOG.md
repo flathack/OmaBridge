@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.3.0 — 2026-09-12
+
+- Englisch als Standardsprache; Deutsch unter Settings → Language auswählbar.
+- Sprachwechsel ohne Sitzungsverlust, dauerhaft gespeichert und auch im Bar-Menü.
+- Passwortwechsel-Formulare werden vor jeder automatischen Eingabe blockiert.
+- ICA-Downloads starten keinen Client mehr nach Wechsel zum Browser-Modus oder Sitzungsende.
+
 ## 0.2.0 — 2026-09-12
 
 - OmaBridge als Omarchy-Quickshell-Bar-Widget mit mehreren Citrix-Sites.

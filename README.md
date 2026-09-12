@@ -30,11 +30,12 @@ Run it again to update. `omarchy plugin add` alone does not install the Python a
 
 ## Use
 
-Click **Citrix → Sites verwalten**, then **+**. Enter the portal's HTTPS URL,
+Click **Citrix → Manage sites**, then **+**. Enter the portal's HTTPS URL,
 your credentials and a **TOTP secret** (Base32 or `otpauth://` link, not a one-time
 code). Choose Workspace or Browser, save, and select the site from the bar.
 Choose the app or desktop in the Citrix portal. Settings are under **⋮**.
-The app's UI currently uses German labels.
+English is the default. Switch to German under **⋮ → Settings → Language**;
+the preference is saved and applies without closing sessions.
 
 ## Remove
 
@@ -48,4 +49,4 @@ Delete sites in OmaBridge first if you also want to remove saved credentials.
 [Changelog](CHANGELOG.md) · [Security review](docs/security-review.md)
 
 Development version: portal compatibility needs testing with your Citrix setup.
-The security review lists open findings; this is not an official Marketplace approval.
+The two reported code issues are fixed in 0.3.0. Marketplace approval and a license are still pending.

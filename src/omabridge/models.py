@@ -1,3 +1,5 @@
+from .i18n import tr
+
 from dataclasses import asdict, dataclass, field
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID, uuid4
@@ -5,17 +7,17 @@ from uuid import UUID, uuid4
 
 def https_url(value: str) -> str:
     if any(ord(c) < 32 for c in value):
-        raise ValueError("Die Portal-URL enthält Steuerzeichen.")
+        raise ValueError(tr("The portal URL contains control characters."))
     value = value.strip()
     try:
         url = urlsplit(value)
         port = url.port
     except ValueError as error:
-        raise ValueError("Die Portal-URL ist ungültig.") from error
+        raise ValueError(tr("The portal URL is invalid.")) from error
     if (url.scheme != "https" or not url.hostname or url.username is not None
             or url.password is not None or any(c.isspace() for c in value)
             or "\\" in value or any(ord(c) < 32 for c in value)):
-        raise ValueError("Bitte eine HTTPS-Portal-URL ohne Zugangsdaten eingeben.")
+        raise ValueError(tr("Enter an HTTPS portal URL without embedded credentials."))
     host = url.hostname.encode("idna").decode("ascii").lower()
     host = f"[{host}]" if ":" in host else host
     netloc = host + (f":{port}" if port and port != 443 else "")
@@ -39,19 +41,19 @@ class Site:
     def __post_init__(self):
         self.name = self.name.strip()
         if not self.name or len(self.name) > 80:
-            raise ValueError("Der Site-Name muss 1–80 Zeichen lang sein.")
+            raise ValueError(tr("The site name must be 1–80 characters long."))
         self.url = https_url(self.url)
         if urlsplit(self.url).query or urlsplit(self.url).fragment:
-            raise ValueError("Die Portal-URL ohne Query-Parameter oder Fragment speichern.")
+            raise ValueError(tr("Save the portal URL without query parameters or a fragment."))
         UUID(self.id)
         if self.mode not in {"workspace", "browser"}:
-            raise ValueError("Unbekannter Startmodus.")
+            raise ValueError(tr("Unknown launch mode."))
         if type(self.auto_login) is not bool:
-            raise ValueError("Ungültige Einstellung für die automatische Anmeldung.")
+            raise ValueError(tr("Invalid automatic sign-in setting."))
         allowed = {"username", "password", "otp", "submit", "browser", "workspace"}
         if (not isinstance(self.selectors, dict) or set(self.selectors) - allowed
                 or any(not isinstance(v, str) or len(v) > 1000 for v in self.selectors.values())):
-            raise ValueError("Ungültige Formular-Selektoren.")
+            raise ValueError(tr("Invalid form selectors."))
 
     def public_dict(self):
         return asdict(self)

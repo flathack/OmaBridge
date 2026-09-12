@@ -82,7 +82,7 @@ def test_save_failure_keeps_previous(tmp_path, monkeypatch):
 def test_corrupt_config_never_overwritten(tmp_path):
     store = SiteStore(tmp_path)
     store.path.write_text('{"version": 99, "sites": []}')
-    with pytest.raises(ValueError, match="nicht überschrieben"):
+    with pytest.raises(ValueError, match="not been overwritten"):
         store.load()
     assert json.loads(store.path.read_text())["version"] == 99
 

@@ -266,7 +266,16 @@ def test_hidden_token_prompt_and_new_password_never_become_otp(app, page):
                                      'class="field CredentialTypeinformation" style="display:none"'))
     assert evaluate(app, page, fill=False, passwordSubmitted=True)["state"] == "waiting"
     html(app, page, CHALLENGE.replace('autocomplete="off"', 'autocomplete="new-password"'))
-    assert evaluate(app, page, fill=False, passwordSubmitted=True)["state"] == "waiting"
+    assert evaluate(app, page, fill=False, passwordSubmitted=True)["state"] == "ambiguous"
+
+
+@pytest.mark.parametrize("custom", [False, True])
+def test_new_password_field_never_receives_credentials(app, page, custom):
+    html(app, page, FORM.replace('id="password"', 'id="password" autocomplete="new-password"'))
+    settings = {"selectors": {"password": "#password"}} if custom else {}
+    assert evaluate(app, page, **settings)["state"] == "ambiguous"
+    assert js(app, page, '[username.value, password.value, otp.value]') == ["", "", ""]
+    assert js(app, page, 'document.body.dataset.submits || "0"') == "0"
 
 
 def test_foreign_citrix_challenge_never_receives_code(app, session):

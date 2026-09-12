@@ -30,11 +30,12 @@ Erneutes Ausführen aktualisiert beides. `omarchy plugin add` allein installiert
 
 ## Verwendung
 
-**Citrix → Sites verwalten** und anschließend **+** wählen. HTTPS-Portal-URL,
+**Citrix → Manage sites** (deutsch: **Sites verwalten**) und anschließend **+** wählen. HTTPS-Portal-URL,
 Zugangsdaten und **TOTP-Schlüssel** eintragen (Base32 oder `otpauth://`-Link,
 kein Einmalcode). Workspace oder Browser auswählen, speichern und die Site
 in der Bar öffnen. App oder Desktop im Citrix-Portal auswählen.
-Die Einstellungen findest du unter **⋮**.
+Standard ist Englisch. Unter **⋮ → Settings → Language → Deutsch** wechselst du
+sofort auf Deutsch. Die Auswahl bleibt gespeichert; Sitzungen bleiben geöffnet.
 
 ## Entfernen
 
@@ -48,4 +49,4 @@ Zum Löschen der Zugangsdaten vorher die Sites in OmaBridge entfernen.
 [Änderungen](CHANGELOG.md) · [Security-Review](docs/security-review.md)
 
 Entwicklungsversion: Die Kompatibilität muss mit deiner Citrix-Umgebung geprüft werden.
-Der Security-Review nennt offene Befunde; eine offizielle Marketplace-Freigabe liegt nicht vor.
+Die beiden Code-Befunde sind in 0.3.0 behoben. Marketplace-Freigabe und Lizenz stehen noch aus.

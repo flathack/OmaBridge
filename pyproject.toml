@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omabridge"
-version = "0.2.0"
+version = "0.3.0"
 description = "Citrix StoreFront launcher for the Omarchy bar"
 readme = "README.md"
 authors = [{name = "FlatHack"}]

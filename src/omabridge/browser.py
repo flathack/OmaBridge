@@ -1,3 +1,5 @@
+from .i18n import tr
+
 import json
 import time
 from importlib.resources import files
@@ -41,7 +43,7 @@ class PortalPage(QWebEnginePage):
 
     def reject_certificate(self, error):
         error.rejectCertificate()
-        self.session.message.emit("TLS-Zertifikat ungültig. Zertifikat bzw. Firmen-CA auf dem System prüfen.")
+        self.session.message.emit(tr("Invalid TLS certificate. Check the certificate or company CA on your system."))
 
     def javaScriptConsoleMessage(self, level, message, line, source):
         pass  # Portal logs can include credentials or session tickets.
@@ -50,9 +52,9 @@ class PortalPage(QWebEnginePage):
         if url.scheme() in {"https", "about", "blob"}:
             return True
         if url.scheme() in {"receiver", "receivers", "citrixworkspace"}:
-            self.session.message.emit("Im Portal „Bereits installiert“ wählen, damit Citrix eine ICA-Datei herunterlädt.")
+            self.session.message.emit(tr("Choose “Already installed” in the portal so Citrix downloads an ICA file."))
         else:
-            self.session.message.emit("Unsichere oder externe Navigation blockiert. Das Portal muss HTTPS verwenden.")
+            self.session.message.emit(tr("Unsafe or external navigation blocked. The portal must use HTTPS."))
         return False
 
     def createWindow(self, window_type):
@@ -125,7 +127,7 @@ class PortalSession(QWidget):
 
     def start(self):
         self.view.load(QUrl(self.site.url))
-        self.message.emit("Portal wird geladen …")
+        self.message.emit(tr("Loading portal …"))
 
     def url_changed(self, url):
         # Do not show query strings: launch tickets can be carried in URLs.
@@ -133,9 +135,9 @@ class PortalSession(QWidget):
 
     def loaded(self, success):
         if not success:
-            self.message.emit("Portal konnte nicht geladen werden. URL, Netzwerk, VPN und Zertifikat prüfen.")
+            self.message.emit(tr("Could not load the portal. Check the URL, network, VPN and certificate."))
         else:
-            self.message.emit("Portal bereit. Anmeldung und anschließend App oder Desktop auswählen.")
+            self.message.emit(tr("Portal ready. Sign in, then select an app or desktop."))
 
     def evaluate(self, script, options, callback):
         def decoded(value):
@@ -177,9 +179,9 @@ class PortalSession(QWidget):
             self.busy = False
             if isinstance(result, dict):
                 messages = {
-                    "ambiguous": "Formular nicht eindeutig erkannt. Manuell anmelden oder Feld-Selektoren in den Site-Einstellungen anpassen.",
-                    "selector-error": "Ungültiger CSS-Selektor. Bitte Site-Einstellungen korrigieren.",
-                    "untrusted-action": "Das Formular sendet an eine andere Domain. Zugangsdaten werden nicht automatisch ausgefüllt."
+                    "ambiguous": tr("Form is ambiguous. Sign in manually or adjust field selectors in the site settings."),
+                    "selector-error": tr("Invalid CSS selector. Please correct the site settings."),
+                    "untrusted-action": tr("The form submits to another origin. Credentials will not be filled automatically.")
                 }
                 if result.get("state") in messages:
                     self.message.emit(messages[result["state"]])
@@ -190,13 +192,13 @@ class PortalSession(QWidget):
             return
         if self.totp and "otp" in result["roles"] and self.totp.remaining() < 5:
             self.busy = False
-            self.message.emit("Warte auf einen frischen TOTP-Code …")
+            self.message.emit(tr("Waiting for a fresh TOTP code …"))
             return
         values = {"username": self.credentials.username, "password": self.credentials.password,
                   "otp": self.totp.code() if self.totp else ""}
         if any(not values.get(role) for role in result["roles"]):
             self.busy = False
-            self.message.emit("Zugangsdaten fehlen. Site bearbeiten oder direkt im Portal anmelden.")
+            self.message.emit(tr("Credentials are missing. Edit the site or sign in directly in the portal."))
             return
         # Reserve before invoking page code, so reloads and errors cannot cause a retry storm.
         options = self.login_options()
@@ -213,30 +215,30 @@ class PortalSession(QWidget):
             # The next form gets its own interval, even after a slow first step.
             self.deadline = time.monotonic() + 90
             if "password" in stage.split("+") and "otp" not in stage.split("+") and self.totp:
-                self.message.emit("Benutzername/Passwort gesendet. Warte auf das TOTP-Feld …")
+                self.message.emit(tr("Username/password submitted. Waiting for the TOTP field …"))
             elif "otp" in stage.split("+"):
-                self.message.emit("TOTP-Code gesendet. Anmeldung wird abgeschlossen …")
+                self.message.emit(tr("TOTP code submitted. Completing sign-in …"))
             else:
-                self.message.emit("Anmeldeschritt gesendet. Warte auf den nächsten Schritt …")
+                self.message.emit(tr("Sign-in step submitted. Waiting for the next step …"))
         else:
             # These responses guarantee that no click took place. A missing
             # callback remains reserved because navigation may have submitted.
             if state in {"awaiting-submit", "changed", "missing", "waiting", "ambiguous", "selector-error", "untrusted", "untrusted-action"}:
                 self.used_stages.discard(stage)
             if state == "awaiting-submit":
-                self.message.emit("Felder ausgefüllt. Warte auf den Anmelde-Button; du kannst auch manuell bestätigen.")
+                self.message.emit(tr("Fields filled. Waiting for the sign-in button; you can also submit manually."))
             else:
-                self.message.emit("Formular hat sich geändert. Bitte im Portal fortfahren oder „Anmeldung erneut“ wählen.")
+                self.message.emit(tr("The form changed. Continue in the portal or choose “Retry sign-in”."))
 
     def retry(self):
         self.used_stages.clear()
         self.auto_enabled = True
         self.deadline = time.monotonic() + 90
-        self.message.emit("Automatische Anmeldung erneut aktiviert.")
+        self.message.emit(tr("Automatic sign-in enabled again."))
 
     def pause(self):
         self.auto_enabled = False
-        self.message.emit("Automatische Anmeldung pausiert. Du kannst im Portal fortfahren.")
+        self.message.emit(tr("Automatic sign-in paused. You can continue in the portal."))
 
     def download(self, request):
         is_ica = request.suggestedFileName().lower().endswith(".ica") or request.mimeType() == "application/x-ica"
@@ -246,11 +248,11 @@ class PortalSession(QWidget):
             trusted = False
         if self.disposed or not is_ica or not trusted:
             request.cancel()
-            self.message.emit("Download blockiert. OmaBridge übernimmt nur ICA-Dateien von der gespeicherten Portal-Domain.")
+            self.message.emit(tr("Download blocked. OmaBridge only accepts ICA files from the saved portal origin."))
             return
         if self.site.mode != "workspace":
             request.cancel()
-            self.message.emit("Das Portal liefert eine Workspace-Datei. Im Portal „Webbrowser verwenden“ wählen; HTML5 muss serverseitig aktiviert sein.")
+            self.message.emit(tr("The portal returned a Workspace file. Choose “Use web browser” in the portal; HTML5 must be enabled on the server."))
             return
         filename = f"{uuid4()}.ica"
         request.setDownloadDirectory(self.temporary.name)
@@ -266,14 +268,20 @@ class PortalSession(QWidget):
         if not request.isFinished() or request not in self.downloads:
             return
         self.downloads.remove(request)
+        # The user may switch modes or close the session while a download is pending.
+        if self.disposed or self.site.mode != "workspace":
+            path.unlink(missing_ok=True)
+            if not self.disposed:
+                self.message.emit(tr("Workspace launch cancelled: browser mode is now active."))
+            return
         if request.state() != QWebEngineDownloadRequest.DownloadState.DownloadCompleted:
             path.unlink(missing_ok=True)
-            self.message.emit("ICA-Download fehlgeschlagen oder abgebrochen. App im Portal erneut auswählen.")
+            self.message.emit(tr("ICA download failed or was cancelled. Select the app in the portal again."))
             return
         try:
             process = launch_workspace(path)
             self.clients.append((process, path, time.monotonic()))
-            self.message.emit("ICA-Datei an Citrix Workspace übergeben.")
+            self.message.emit(tr("ICA file handed off to Citrix Workspace."))
         except (OSError, ValueError) as error:
             path.unlink(missing_ok=True)
             self.message.emit(str(error))
@@ -285,7 +293,7 @@ class PortalSession(QWidget):
                 path.unlink(missing_ok=True)
                 self.clients.remove((process, path, started))
                 if result not in {None, 0}:
-                    self.message.emit("Citrix Workspace meldet einen Startfehler. Client-Installation und Verbindung prüfen.")
+                    self.message.emit(tr("Citrix Workspace reported a launch error. Check the client installation and connection."))
 
     def dispose(self):
         if self.disposed:

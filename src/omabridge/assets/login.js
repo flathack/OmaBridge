@@ -10,6 +10,10 @@
     };
     const inputs = [...document.querySelectorAll('input')].filter(e =>
         visible(e) && ['text', 'password', 'tel', 'number', 'email', 'search'].includes(e.type));
+    // A known selector must never turn a password-change field into a login field.
+    // Reject the whole step before filling any credential, including custom selectors.
+    if (inputs.some(e => e.autocomplete.toLowerCase().split(/\s+/).includes('new-password')))
+        return {state: "ambiguous"};
     const otpText = text => /\b(totp|otp|passcode|token|one[ -]?time(?:[ -]?(?:password|code))?|verification[ -]?code|security[ -]?code|authentication[ -]?code|authenticator(?:[ -]?code)?|einmal(?:passwort|kennwort|code)|bestätigungscode|bestatigungscode|sicherheitscode|authentifizierungscode|verifizierungscode)\b/i.test(text);
     const fieldText = e => [
         e.id, e.name, e.placeholder, e.getAttribute('aria-label'),

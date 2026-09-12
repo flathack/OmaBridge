@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from PySide6.QtCore import QObject, Signal, QUrl, QCoreApplication, QEvent
 from PySide6.QtWebEngineCore import QWebEngineDownloadRequest
 
@@ -75,4 +77,26 @@ def test_foreign_download_never_launches(app):
     request = Download("https://other.test/launch.ica")
     session.download(request)
     assert request.cancelled and not request.accepted
+    dispose(session)
+
+
+@pytest.mark.parametrize("closed", [False, True])
+def test_completed_download_rechecks_mode_and_lifetime(app, monkeypatch, closed):
+    import omabridge.browser as browser
+    session = PortalSession(Site("Test", "https://citrix.test"), Credentials())
+    session.timer.stop()
+    launched = []
+    monkeypatch.setattr(browser, "launch_workspace", lambda path: launched.append(path))
+    request = Download()
+    session.download(request)
+    path = Path(request.directory) / request.filename
+    path.write_text("test fixture ticket")
+    if closed:
+        session.dispose()
+    else:
+        session.site.mode = "browser"
+    request.finished = True
+    request.isFinishedChanged.emit()
+    assert not launched and not path.exists()
+    assert request not in session.downloads
     dispose(session)

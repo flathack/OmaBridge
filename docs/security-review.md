@@ -2,15 +2,19 @@
 
 Reviewed on **2026-09-12**, against code commit
 [`22b2fd5`](https://github.com/flathack/OmaBridge/tree/22b2fd55876fb9fe593ad07a18a6b3d9ba7aa99b).
-The accompanying changes only shorten and reorganize documentation; the findings
-below remain open. This is a local review, not an official Omarchy approval.
+The two code findings below were **fixed in 0.3.0** and covered by regression tests.
+The original scan results are retained as historical evidence; they do not attest
+the newer code. This is a local review, not an official Omarchy approval.
 
-## Open findings
+Version 0.3.0 validation: **74 tests passed**, the Omarchy manifest is valid, and
+Bandit reports only the same two low-severity Workspace subprocess notices.
 
-| Priority | Finding | Required change |
+## Findings and resolution
+
+| Status | Finding | Resolution / remaining action |
 | --- | --- | --- |
-| Medium | A password-change field can receive the saved account password. | Reject visible `autocomplete="new-password"` fields before assigning any login role. |
-| Medium | An ICA download can launch Workspace after switching to browser mode. | Recheck the current launch mode and session lifetime at download completion. |
+| Medium · fixed in 0.3.0 | A password-change field can receive the saved account password. | Visible `autocomplete="new-password"` fields now block the entire sign-in step, including custom selectors. |
+| Medium · fixed in 0.3.0 | An ICA download can launch Workspace after switching to browser mode. | Download completion now rechecks the launch mode and session lifetime and deletes rejected tickets. |
 | Publication blocker | No root license file. | Choose a license and add it before submission. |
 
 ### Password-change form detection
@@ -77,8 +81,8 @@ review label or approval attestation was created.
 
 ## Scope and next steps
 
-Fix the two reproduced issues and add regression tests before a release. Choose the
-license and a permanent plugin ID, then request the Marketplace's manual-setup review
+The 0.3.0 regression tests cover both fixes, including custom password selectors
+and late download completion after session disposal. Choose the license and a permanent plugin ID, then request the Marketplace's manual-setup review
 for the installer. A maintainer must review the exact submitted commit under the
 [submission rules](https://github.com/omacom/omarchy-plugin-marketplace/blob/3942261b4943d19359b84e01be149491b800d3bc/SUBMISSION.md)
 and [security policy](https://github.com/omacom/omarchy-plugin-marketplace/blob/3942261b4943d19359b84e01be149491b800d3bc/SECURITY.md).

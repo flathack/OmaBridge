@@ -1,3 +1,5 @@
+from .i18n import tr
+
 import configparser
 import io
 import os
@@ -17,16 +19,16 @@ def workspace_executable() -> str | None:
 
 def prepare_ica(path: Path):
     if not 0 < path.stat().st_size <= 2_000_000:
-        raise ValueError("Ungültige ICA-Dateigröße.")
+        raise ValueError(tr("Invalid ICA file size."))
     content = path.read_text(encoding="utf-8-sig")
     parser = configparser.ConfigParser(interpolation=None, strict=False)
     parser.optionxform = str
     try:
         parser.read_string(content)
     except configparser.Error as error:
-        raise ValueError("Das Portal hat keine gültige ICA-Datei geliefert.") from error
+        raise ValueError(tr("The portal did not return a valid ICA file.")) from error
     if "WFClient" not in parser or "ApplicationServers" not in parser:
-        raise ValueError("Das Portal hat keine ICA-Sitzung geliefert.")
+        raise ValueError(tr("The portal did not return an ICA session."))
     # Workspace removes the launch ticket once consumed. Also clean up on exit.
     for key in list(parser["WFClient"]):
         if key.lower() == "removeicafile":
@@ -41,7 +43,7 @@ def prepare_ica(path: Path):
 def launch_workspace(path: Path):
     executable = workspace_executable()
     if not executable:
-        raise ValueError("Citrix Workspace fehlt: wfica ist nicht installiert. Workspace installieren oder Browser-Modus wählen.")
+        raise ValueError(tr("Citrix Workspace is missing: wfica is not installed. Install Workspace or choose browser mode."))
     prepare_ica(path)
     return subprocess.Popen([executable, str(path)], stdin=subprocess.DEVNULL,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
