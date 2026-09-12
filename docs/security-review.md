@@ -91,3 +91,22 @@ No live customer portal, real credentials or active VM was used. Dependency audi
 is advisory-database matching, not a binary audit of embedded Chromium/Qt or Citrix
 Workspace. The two reproduced findings show why passing automated checks alone does
 not establish that the application is ready for release.
+
+## 0.4.0 follow-up — theme and app lock
+
+Local review and Bandit scan on 2026-09-12: no medium/high findings; the same two
+low subprocess findings described above remain. All 93 local tests pass, including
+lock gating for startup/IPC, rejected changes without the old secret, persisted retry
+delays, malformed configuration, browser disposal and live theme replacement.
+
+App lock uses random salts, constant-time digest comparison and scrypt
+(`N=2**17`, `r=8`, `p=1`, 128 MiB), following the
+[OWASP password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+Only the hash and retry state are written to a private, atomic configuration file.
+It is an optional UI gate: a process with access to the same Linux account can
+modify that file or access the keyring independently. Short PINs remain weaker than
+long passwords. Native Workspace sessions are outside the lock's scope.
+
+Theme files are size-limited TOML data with validated hex colors, never executed.
+Polling the logical path handles atomic theme/symlink replacement without restarting
+portal sessions. This follow-up is not an Omarchy maintainer approval.

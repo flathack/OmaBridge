@@ -13,6 +13,7 @@ Ui.BarWidget {
     property bool popupOpen: false
     property var sites: []
     property string loadError: ""
+    property bool locked: false
     property string language: "en"
     readonly property string launcher: Quickshell.env("HOME") + "/.local/bin/omabridge"
     function t(english, german) { return root.language === "de" ? german : english }
@@ -28,6 +29,7 @@ Ui.BarWidget {
     function refreshSites() {
         if (!reader.running) {
             loadError = ""
+            sites = []
             reader.running = true
         }
     }
@@ -68,7 +70,8 @@ Ui.BarWidget {
                     const parsed = JSON.parse(text)
                     if (!Array.isArray(parsed.sites)) throw new Error("Invalid sites")
                     root.language = parsed.language === "de" ? "de" : "en"
-                    root.sites = parsed.sites
+                    root.locked = parsed.locked === true
+                    root.sites = root.locked ? [] : parsed.sites
                 } catch (_) {
                     root.sites = []
                     root.loadError = root.t("Could not load sites. Open OmaBridge and check the configuration.", "Sites konnten nicht geladen werden. OmaBridge öffnen und Konfiguration prüfen.")
@@ -102,7 +105,7 @@ Ui.BarWidget {
             Text {
                 width: parent.width
                 visible: root.loadError !== "" || root.sites.length === 0
-                text: root.loadError || (reader.running ? root.t("Loading sites …", "Sites laden …") : root.t("No saved sites yet. Add your StoreFront connection in OmaBridge.", "Noch keine Site gespeichert. Füge deinen StoreFront-Zugang in OmaBridge hinzu."))
+                text: root.loadError || (reader.running ? root.t("Loading sites …", "Sites laden …") : root.locked ? root.t("Unlock OmaBridge to view your sites.", "Entsperre OmaBridge, um deine Sites zu sehen.") : root.t("No saved sites yet. Add your StoreFront connection in OmaBridge.", "Noch keine Site gespeichert. Füge deinen StoreFront-Zugang in OmaBridge hinzu."))
                 textFormat: Text.PlainText
                 wrapMode: Text.WordWrap
                 color: root.bar ? root.bar.foreground : "white"
@@ -127,7 +130,8 @@ Ui.BarWidget {
                             width: siteRows.width
                             height: Style.space(62)
                             radius: Style.space(4)
-                            color: siteMouse.containsMouse ? Qt.rgba(0.5, 0.6, 0.8, 0.18) : "transparent"
+                            readonly property color highlight: root.bar ? root.bar.foreground : "white"
+                            color: siteMouse.containsMouse ? Qt.rgba(highlight.r, highlight.g, highlight.b, 0.12) : "transparent"
                             activeFocusOnTab: true
                             Accessible.role: Accessible.Button
                             Accessible.name: modelData.name
@@ -168,7 +172,7 @@ Ui.BarWidget {
                 }
             }
             Ui.Button {
-                text: root.t("Manage sites", "Sites verwalten")
+                text: root.locked ? root.t("Open OmaBridge", "OmaBridge öffnen") : root.t("Manage sites", "Sites verwalten")
                 foreground: root.bar ? root.bar.foreground : "white"
                 onClicked: root.launch("")
             }

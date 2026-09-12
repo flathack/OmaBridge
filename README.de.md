@@ -15,6 +15,9 @@ virtuellen Desktop mit **Citrix Workspace** oder im **integrierten HTML5-Browser
 - Mehrstufige Anmeldung mit TOTP-Abfrage nach Benutzername und Passwort.
 - Eine kompakte obere Leiste mit Navigation und Tabs; der Rest bleibt frei.
 
+- Farben folgen dem Omarchy-Theme live, auch in geöffneten Dialogen.
+- Optionale App-Sperre per PIN oder Passwort mit frei wählbarer Länge (Einstellungen).
+
 ## Installation
 
 Benötigt werden Omarchys **Quickshell-Bar**, Python 3.11+, pip/venv und ein

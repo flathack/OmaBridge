@@ -99,6 +99,37 @@ bleiben gespeichert und lassen sich unter **⋮ → Gespeicherte Sites** wieder 
 HTML5-Apps und Desktops starten in eigenen Tabs; das Schließen des zugehörigen Site-Tabs
 schließt auch diese Sitzungs-Tabs. Native Workspace-Fenster bleiben unabhängig.
 
+## Theme und App-Sperre
+
+Die Farben folgen automatisch dem aktiven Omarchy-Theme, auch in geöffneten
+Einstellungen und auf dem Sperrbildschirm. Änderungen erscheinen innerhalb etwa
+einer Sekunde, ohne Sitzungen neu zu verbinden. Gelesen wird
+`~/.local/state/omarchy/current/theme/colors.toml`, ersatzweise der ältere Pfad
+`~/.config/omarchy/current/theme/colors.toml`; XDG-Pfade werden berücksichtigt.
+Fehlende oder ungültige Themes behalten die letzte Farbpalette bei; beim ersten
+Start gibt es Ersatzfarben. Citrix-Portal und Remote-Desktop behalten ihr eigenes Design.
+
+Unter **⋮ → Einstellungen** optional eine **PIN** (Ziffern 0–9) oder ein **Passwort**
+aktivieren. Die Länge ist frei wählbar; längere Passwörter sind sicherer als kurze PINs.
+Den neuen Wert bestätigen und speichern. Zum Ändern oder Deaktivieren ist die bisherige
+PIN bzw. das bisherige Passwort nötig. Die Sperre gilt beim nächsten App-Start oder
+sofort über **⋮ → App sperren / Ctrl+Shift+L**. Es gibt keine automatische Leerlaufsperre.
+
+Sperren schließt lokale Portal- und HTML5-Sitzungen, stoppt die Automatik und blendet
+Site-Namen aus. Native Workspace-Sitzungen laufen unabhängig weiter; es erfolgt kein
+serverseitiges Logoff. Bei aktivierter Sperre öffnet die Bar OmaBridge ohne Site-Liste;
+die Site wählst du in der entsperrten App. Auch direkte Site-Aufrufe warten auf das Entsperren.
+
+Gespeichert wird nur ein gesalzener scrypt-Hash in
+`~/.config/omabridge/app-lock.json` (Modus `0600`), mit steigenden Wartezeiten nach
+drei Fehlversuchen. PIN/Passwort werden nicht im Klartext gespeichert.
+**Die Sperre schützt den App-Zugriff; sie verschlüsselt nicht den Schlüsselbund und
+schützt nicht vor anderen Prozessen unter deinem Linux-Benutzer.** Nutze zusätzlich
+die Systemsperre. Falls du die PIN bzw. das Passwort vergisst, OmaBridge schließen und
+nur `app-lock.json` im Konfigurationsverzeichnis entfernen, um die optionale Sperre
+zurückzusetzen. Sites und Schlüsselbund-Einträge bleiben erhalten. Wer denselben
+Dateizugriff hat, kann die Sperre ebenfalls so zurücksetzen.
+
 ## Angepasste Anmeldung und Fehler
 
 Die Standard-Erkennung berücksichtigt unter anderem `#username`, `#password`, `#otp`,

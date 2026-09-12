@@ -7,6 +7,7 @@ import os
 import sys
 
 from .storage import SiteStore
+from .app_lock import AppLockStore
 
 
 def main():
@@ -22,8 +23,9 @@ def main():
     args = parser.parse_args()
     if args.list_sites or args.bar_state:
         try:
-            sites = [{"id": s.id, "name": s.name, "mode": s.mode} for s in SiteStore().load()]
-            print(json.dumps({"language": language(), "sites": sites} if args.bar_state else sites, ensure_ascii=False))
+            locked = bool(AppLockStore().load())
+            sites = [] if locked else [{"id": s.id, "name": s.name, "mode": s.mode} for s in SiteStore().load()]
+            print(json.dumps({"language": language(), "locked": locked, "sites": sites} if args.bar_state else sites, ensure_ascii=False))
         except (ValueError, OSError) as error:
             print(str(error), file=sys.stderr)
             return 1

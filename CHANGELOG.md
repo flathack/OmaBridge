@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.4.0 — 2026-09-12
+
+- App-Farben folgen dem Omarchy-Theme und aktualisieren sich live, auch in Dialogen.
+- Optionale App-Sperre per PIN oder Passwort mit frei wählbarer Länge.
+- Sperren über Menü oder Ctrl+Shift+L; lokale Browser-Sitzungen werden geschlossen.
+- Gesalzener scrypt-Hash, Wartezeiten bei Fehlversuchen und Schutz vor Zugriff über Bar/IPC.
+- Sperre ändern oder deaktivieren nur mit bisheriger PIN bzw. bisherigem Passwort.
+
 ## 0.3.1 — 2026-09-12
 
 - Gemeinsame Demo-Abbildung mit fiktiven Namen und Branding in beiden READMEs.

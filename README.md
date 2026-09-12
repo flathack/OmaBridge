@@ -15,6 +15,9 @@ then launch an app or virtual desktop using **Citrix Workspace** or the
 - Multi-step sign-in, including a TOTP prompt after username and password.
 - A compact top bar with navigation and tabs; the remaining space is yours.
 
+- Colors follow the Omarchy theme live, including open dialogs.
+- Optional app lock with a PIN or password of your chosen length (Settings).
+
 ## Install
 
 Requires Omarchy's **Quickshell bar**, Python 3.11+, pip/venv and a working Secret

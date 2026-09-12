@@ -94,6 +94,34 @@ saved and can be reopened under **⋮ → Saved sites**.
 HTML5 apps and desktops open in their own tabs; closing their parent site tab also
 closes these session tabs. Native Workspace windows remain independent.
 
+## Theme and app lock
+
+Colors follow the active Omarchy theme automatically, including open settings and
+lock screens. Changes appear within about one second without reconnecting sessions.
+The app reads `~/.local/state/omarchy/current/theme/colors.toml` (with the legacy
+`~/.config/omarchy/current/theme/colors.toml` as fallback), respecting XDG paths.
+A missing or invalid theme keeps the last palette, or uses built-in colors at startup.
+The Citrix portal and remote desktop keep their own appearance.
+
+Under **⋮ → Settings**, optionally require a **PIN** (digits 0–9) or **password**.
+The length is yours to choose; longer passwords are safer than short PINs. Confirm
+the new value, then save. Changing or disabling an existing lock requires its current
+PIN/password. The lock applies on the next app start, or immediately with
+**⋮ → Lock app / Ctrl+Shift+L**. There is no automatic idle lock.
+
+Locking closes local portal and HTML5 sessions, stops automation and hides site names.
+Native Workspace sessions continue independently; locking is not a server-side logoff.
+With app lock enabled, the bar opens OmaBridge without listing sites; choose a site
+inside the unlocked app. Direct site requests also wait for a successful unlock.
+
+Only a salted scrypt hash is stored in `~/.config/omabridge/app-lock.json` (mode `0600`),
+with increasing retry delays after three wrong attempts. No lock PIN/password is
+stored in plaintext. **This is an app access gate, not keyring encryption or protection
+against another process running as your Linux user.** Use the system screen lock too.
+If you forget the lock secret, close OmaBridge and remove only `app-lock.json` from its
+configuration directory to reset the optional lock; saved sites and keyring entries
+remain. Anyone with the same filesystem access can perform that reset.
+
 ## Customized sign-in and troubleshooting
 
 Default detection includes `#username`, `#password`, `#otp`, `#passwd1`, common `name`

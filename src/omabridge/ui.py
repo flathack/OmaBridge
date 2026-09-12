@@ -1,5 +1,7 @@
 from .i18n import tr, language, set_language, retranslate, apply_qt_language, ENGLISH
 from .preferences import PreferencesStore
+from .app_lock import AppLockStore
+from .theme import ThemeWatcher, stylesheet, qt_palette
 
 from dataclasses import replace
 from pathlib import Path
@@ -56,8 +58,6 @@ QTabBar { background: #1d2b3b; }
 QTabBar::tab { background: #1d2b3b; color: #9bafc5; min-width: 85px; max-width: 210px; height: 34px; padding: 0 10px; border: 0; border-bottom: 2px solid transparent; }
 QTabBar::tab:selected { background: #26384d; color: #dce7f5; border-bottom-color: #8fb9e8; }
 QTabBar::tab:hover { background: #26384d; }
-QTabBar::close-button { image: url("@ASSET_ROOT@/close.svg"); width: 16px; height: 16px; }
-QTabBar::close-button:hover { background: #344b65; border-radius: 3px; }
 QMenu { background: #1d2b3b; border: 1px solid #3c516a; padding: 5px; }
 QMenu::item { padding: 8px 26px; }
 QMenu::item:selected { background: #344b65; }
@@ -151,7 +151,6 @@ class SiteDialog(QDialog):
         form.addRow("", label(tr("Leave this off to enter verification codes manually in the portal. Turning it off and saving removes an existing TOTP secret."), "muted"))
         self.totp_warning = label(tr("Storing TOTP secrets alongside passwords is insecure: access to both can defeat two-factor authentication. Only use this option if you accept the risk; it is your responsibility."))
         self.totp_warning.setObjectName("totpWarning")
-        self.totp_warning.setStyleSheet("color: #f5c879; background: #362b1b; border: 1px solid #80612c; border-radius: 5px; padding: 10px;")
         self.totp_warning.setAccessibleName(tr("TOTP security warning"))
         self.totp_warning.setAccessibleDescription(self.totp_warning.text())
         form.addRow("", self.totp_warning)
@@ -260,8 +259,9 @@ class StatusNotice(QToolButton):
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.lock_config = getattr(parent, "lock_config", None)
         self.setWindowTitle(tr("Settings"))
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(480)
         layout = QVBoxLayout(self)
         form = QFormLayout()
         self.language = QComboBox()
@@ -271,13 +271,66 @@ class SettingsDialog(QDialog):
         self.language.setAccessibleName(tr("Language"))
         form.addRow(tr("Language"), self.language)
         layout.addLayout(form)
-        layout.addWidget(label(tr("Applies immediately. Open Citrix sessions stay connected.")))
+        layout.addWidget(label(tr("Applies immediately. Open Citrix sessions stay connected."), "muted"))
+        layout.addWidget(label(tr("Colors follow your Omarchy theme and update live."), "muted"))
+        self.lock_enabled = QCheckBox(tr("Require a PIN or password when opening OmaBridge"))
+        self.lock_enabled.setChecked(bool(self.lock_config))
+        layout.addWidget(self.lock_enabled)
+        lock_form = QFormLayout()
+        self.lock_kind = QComboBox()
+        self.lock_kind.addItem(tr("PIN"), "pin")
+        self.lock_kind.addItem(tr("Password"), "password")
+        self.lock_kind.setCurrentIndex(self.lock_kind.findData(self.lock_config['kind'] if self.lock_config else 'pin'))
+        self.current_secret = QLineEdit()
+        self.new_secret = QLineEdit()
+        self.confirm_secret = QLineEdit()
+        for title, field in [("Current PIN or password", self.current_secret),
+                             ("New PIN or password", self.new_secret),
+                             ("Confirm PIN or password", self.confirm_secret)]:
+            field.setEchoMode(QLineEdit.EchoMode.Password)
+            field.setAccessibleName(tr(title))
+        self.lock_kind.setAccessibleName(tr("App lock"))
+        lock_form.addRow(tr("App lock"), self.lock_kind)
+        lock_form.addRow(tr("Current PIN or password"), self.current_secret)
+        lock_form.addRow(tr("New PIN or password"), self.new_secret)
+        lock_form.addRow(tr("Confirm PIN or password"), self.confirm_secret)
+        layout.addLayout(lock_form)
+        layout.addWidget(label(tr("Choose any length. A longer password is safer than a short PIN. Leave new fields empty to keep your existing lock."), "muted"))
+        layout.addWidget(label(tr("This locks OmaBridge, not your keyring or Linux account. Lock app closes local browser sessions; Workspace sessions continue separately."), "muted"))
+        self.error = label("", "muted")
+        layout.addWidget(self.error)
+        self.lock_enabled.toggled.connect(self.update_lock_fields)
+        self.update_lock_fields()
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.button(QDialogButtonBox.StandardButton.Save).setText(tr("Save"))
         buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("Cancel"))
-        buttons.accepted.connect(self.accept)
+        buttons.accepted.connect(self.validate)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+
+    def update_lock_fields(self):
+        self.current_secret.setEnabled(bool(self.lock_config))
+        for field in (self.lock_kind, self.new_secret, self.confirm_secret):
+            field.setEnabled(self.lock_enabled.isChecked())
+
+    def lock_changed(self):
+        return (self.lock_enabled.isChecked() != bool(self.lock_config) or
+                self.lock_enabled.isChecked() and (bool(self.new_secret.text()) or
+                self.lock_config and self.lock_kind.currentData() != self.lock_config['kind']))
+
+    def validate(self):
+        try:
+            if self.lock_enabled.isChecked() and self.new_secret.text() != self.confirm_secret.text():
+                raise ValueError(tr("The PINs or passwords do not match."))
+            if self.lock_changed():
+                if self.lock_config and not self.current_secret.text():
+                    raise ValueError(tr("Enter your current PIN or password to change or disable the lock."))
+                if self.lock_enabled.isChecked():
+                    AppLockStore.validate_secret(self.new_secret.text(), self.lock_kind.currentData())
+        except ValueError as error:
+            self.error.setText(str(error))
+            return
+        self.accept()
 
 
 class MainWindow(QMainWindow):
@@ -287,8 +340,12 @@ class MainWindow(QMainWindow):
         self.preferences = PreferencesStore(self.store.directory)
         set_language(self.preferences.load())
         apply_qt_language()
+        self.lock_store = AppLockStore(self.store.directory)
+        self.lock_config = self.lock_store.load()
+        self.locked = bool(self.lock_config)
+        self.pending_site_id = None
         self.vault = vault or SecretVault()
-        self.sites = self.store.load()
+        self.sites = [] if self.locked else self.store.load()
         self.sessions = {}
         self.popup_tabs = {}
         self.hidden_sites = set()
@@ -357,6 +414,7 @@ class MainWindow(QMainWindow):
         self.pause_action = self.add_action(tr("Pause automation"), self.pause)
         self.close_action = self.add_action(tr("Close tab"), self.close_current_tab, "Ctrl+W")
         self.menu.addSeparator()
+        self.lock_action = self.add_action(tr("Lock app"), self.lock_app, "Ctrl+Shift+L")
         self.settings_action = self.add_action(tr("Settings"), self.open_settings)
         self.add_action(tr("Fullscreen"), self.toggle_fullscreen, "F11")
         self.add_action(tr("Quit"), self.close, "Ctrl+Q")
@@ -384,8 +442,107 @@ class MainWindow(QMainWindow):
         empty_layout.addStretch()
         self.stack.addWidget(self.empty)
         layout.addWidget(self.stack, 1)
-        self.setCentralWidget(root)
+        self.pages = QStackedWidget()
+        self.pages.addWidget(root)
+        self.build_lock_page()
+        self.setCentralWidget(self.pages)
+        self.pages.setCurrentIndex(1 if self.locked else 0)
         self.refresh()
+        self.theme = ThemeWatcher(self)
+        self.theme.changed.connect(self.apply_theme)
+        self.theme.refresh()
+        if self.locked:
+            self.unlock_secret.setFocus()
+
+    def apply_theme(self, colors):
+        self.theme_colors = colors
+        self.setPalette(qt_palette(colors))
+        self.setStyleSheet(stylesheet(STYLE, colors))
+        # Explicit local foreground keeps text-only navigation glyphs visible in Qt.
+        for control in self.findChildren(QToolButton):
+            control.setStyleSheet("QToolButton:enabled { color: " + colors['foreground'] + "; }")
+
+    def add_tab_close(self, index):
+        control = QToolButton(self.tabs)
+        control.setText("×")
+        control.setAccessibleName(tr("Close tab"))
+        control.setFixedSize(18, 22)
+        control.clicked.connect(lambda: self.close_tab(next((i for i in range(self.tabs.count())
+            if self.tabs.tabButton(i, QTabBar.ButtonPosition.RightSide) is control), -1)))
+        if hasattr(self, 'theme_colors'):
+            control.setStyleSheet("QToolButton:enabled { color: " + self.theme_colors['foreground'] + "; }")
+        self.tabs.setTabButton(index, QTabBar.ButtonPosition.RightSide, control)
+
+    def build_lock_page(self):
+        self.lock_page = QWidget()
+        layout = QVBoxLayout(self.lock_page)
+        layout.addStretch()
+        panel = QWidget()
+        panel.setMinimumWidth(360)
+        panel.setMaximumWidth(440)
+        form = QVBoxLayout(panel)
+        title = label("OmaBridge", "title")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        form.addWidget(title)
+        self.lock_hint = label(tr("Enter your PIN or password to unlock."), "muted")
+        form.addWidget(self.lock_hint)
+        self.unlock_secret = QLineEdit()
+        self.unlock_secret.setEchoMode(QLineEdit.EchoMode.Password)
+        self.unlock_secret.setAccessibleName(tr("PIN or password"))
+        self.unlock_secret.returnPressed.connect(self.unlock_app)
+        form.addWidget(self.unlock_secret)
+        self.unlock_button = button(tr("Unlock"), self.unlock_app, primary=True)
+        form.addWidget(self.unlock_button)
+        self.unlock_error = label("", "muted")
+        form.addWidget(self.unlock_error)
+        self.lock_quit = button(tr("Quit"), self.close)
+        form.addWidget(self.lock_quit)
+        layout.addWidget(panel, 0, Qt.AlignmentFlag.AlignHCenter)
+        layout.addStretch()
+        self.pages.addWidget(self.lock_page)
+
+    def unlock_app(self):
+        if not self.locked or self.mutating:
+            return
+        secret = self.unlock_secret.text()
+        self.unlock_secret.clear()
+        self.unlock_error.setText("")
+        def done(valid, error):
+            if error or not valid:
+                self.unlock_error.setText(str(error) if error else tr("Incorrect PIN or password."))
+                self.unlock_secret.setFocus()
+                return
+            try:
+                sites = self.store.load()
+            except (ValueError, OSError) as error:
+                self.unlock_error.setText(str(error))
+                return
+            self.sites = sites
+            self.locked = False
+            self.pages.setCurrentIndex(0)
+            self.refresh()
+            pending, self.pending_site_id = self.pending_site_id, None
+            if pending:
+                self.open_site_id(pending)
+        self.run_job(lambda: self.lock_store.verify(secret), done)
+
+    def lock_app(self):
+        if self.locked or self.mutating or not self.lock_config:
+            return
+        # Dispose browser profiles and automation before hiding all site information.
+        self.locked = True
+        self.pages.setCurrentIndex(1)
+        for site_id in list(self.sessions):
+            self.remove_session(site_id)
+        self.sites = []
+        self.hidden_sites.clear()
+        self.messages.clear()
+        self.sites_menu.clear()
+        self.pending_site_id = None
+        self.unlock_secret.clear()
+        self.unlock_error.clear()
+        self.refresh()
+        self.unlock_secret.setFocus()
 
     def nav_button(self, text, tooltip, action):
         control = QToolButton()
@@ -411,14 +568,44 @@ class MainWindow(QMainWindow):
         return action
 
     def open_settings(self):
-        if self.mutating:
+        if self.locked or self.mutating:
             return
         dialog = SettingsDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.change_language(dialog.language.currentData())
+            value = dialog.language.currentData()
+            if dialog.lock_changed():
+                enabled, kind = dialog.lock_enabled.isChecked(), dialog.lock_kind.currentData()
+                current, secret = dialog.current_secret.text(), dialog.new_secret.text()
+                self.save_lock_settings(enabled, kind, current, secret, value)
+            else:
+                self.change_language(value)
+        for field in (dialog.current_secret, dialog.new_secret, dialog.confirm_secret):
+            field.clear()
         dialog.deleteLater()
 
+    def save_lock_settings(self, enabled, kind, current, secret, selected_language):
+        if self.locked or self.mutating:
+            return
+        def save():
+            if self.lock_config and not self.lock_store.verify(current):
+                raise ValueError(tr("Incorrect PIN or password."))
+            if enabled:
+                self.lock_store.configure(secret, kind)
+            else:
+                self.lock_store.disable()
+            return self.lock_store.load()
+        def done(config, error):
+            if error:
+                self.show_error(error)
+                return
+            self.lock_config = config
+            self.change_language(selected_language)
+            self.set_controls()
+        self.run_job(save, done)
+
     def change_language(self, value):
+        if self.locked or self.mutating:
+            return
         # Persist first: a failed write leaves the current UI and preference intact.
         try:
             self.preferences.save(value)
@@ -438,6 +625,10 @@ class MainWindow(QMainWindow):
         self.tabs.setAccessibleName(tr("Citrix sites and sessions"))
         self.status.setAccessibleName(tr("Connection status and portal address"))
         self.empty_connect.setText(tr("Open portal"))
+        self.lock_hint.setText(tr("Enter your PIN or password to unlock."))
+        self.unlock_secret.setAccessibleName(tr("PIN or password"))
+        self.unlock_button.setText(tr("Unlock"))
+        self.lock_quit.setText(tr("Quit"))
         self.messages = {key: retranslate(message) for key, message in self.messages.items()}
         self.refresh()
         self.status.setText(tr("Language changed."))
@@ -471,14 +662,17 @@ class MainWindow(QMainWindow):
 
     def set_controls(self):
         site = self.current_site()
-        enabled = bool(site) and not self.mutating
+        enabled = bool(site) and not self.mutating and not self.locked
         for action in (self.edit_action, self.delete_action, self.connect_action, *self.mode_actions.values()):
             action.setEnabled(enabled)
         for action in (self.retry_action, self.pause_action):
             action.setEnabled(enabled and site.id in self.sessions if site else False)
         self.close_action.setEnabled(bool(self.tabs.count()) and not self.mutating)
-        self.add_button.setEnabled(not self.mutating)
-        self.settings_action.setEnabled(not self.mutating)
+        self.add_button.setEnabled(not self.mutating and not self.locked)
+        self.settings_action.setEnabled(not self.mutating and not self.locked)
+        self.lock_action.setEnabled(bool(self.lock_config) and not self.locked and not self.mutating)
+        self.unlock_button.setEnabled(self.locked and not self.mutating)
+        self.unlock_secret.setEnabled(self.locked and not self.mutating)
         self.tabs.setEnabled(not self.mutating)
         view = self.current_view()
         self.back_button.setEnabled(bool(view) and view.history().canGoBack() and not self.mutating)
@@ -501,12 +695,14 @@ class MainWindow(QMainWindow):
             if site.id in self.hidden_sites:
                 continue
             index = self.tabs.addTab(site.name)
+            self.add_tab_close(index)
             self.tabs.setTabData(index, site.id)
             self.tabs.setTabToolTip(index, site.url)
             if key == site.id:
                 selected = index
         for token, (owner, view) in self.popup_tabs.items():
             index = self.tabs.addTab(view.title() or tr("Citrix session"))
+            self.add_tab_close(index)
             self.tabs.setTabData(index, token)
             if key == token:
                 selected = index
@@ -548,6 +744,8 @@ class MainWindow(QMainWindow):
             self.set_controls()
 
     def navigate(self, action):
+        if self.locked or self.mutating:
+            return
         view = self.current_view()
         if view:
             getattr(view, action)()
@@ -560,6 +758,8 @@ class MainWindow(QMainWindow):
         self.showNormal() if self.isFullScreen() else self.showFullScreen()
 
     def open_popup(self, session):
+        if self.locked or self.mutating:
+            return
         view = QWebEngineView(self.stack)
         page = PortalPage(session.profile, session, view)
         view.setPage(page)
@@ -569,6 +769,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(view)
         self.tabs.blockSignals(True)
         index = self.tabs.addTab(tr("Citrix session"))
+        self.add_tab_close(index)
         self.tabs.setTabData(index, token)
         self.tabs.setCurrentIndex(index)
         self.tabs.blockSignals(False)
@@ -625,19 +826,23 @@ class MainWindow(QMainWindow):
         box.exec()
 
     def add_site(self):
-        if self.mutating:
+        if self.locked or self.mutating:
             return
         self.edit_dialog()
 
     def edit_site(self):
+        if self.locked or self.mutating:
+            return
         site = self.current_site()
-        if not site or self.mutating:
+        if not site:
             return
         self.status.setText(tr("Loading credentials from the keyring …"))
         self.run_job(lambda: self.vault.get(site.id), lambda credentials, error:
                      self.show_error(error) if error else self.edit_dialog(site, credentials))
 
     def edit_dialog(self, site=None, credentials=None):
+        if self.locked or self.mutating:
+            return
         dialog = SiteDialog(self, site, credentials)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             dialog.deleteLater()
@@ -672,6 +877,8 @@ class MainWindow(QMainWindow):
         self.run_job(save, done)
 
     def delete_site(self):
+        if self.locked or self.mutating:
+            return
         site = self.current_site()
         if not site:
             return
@@ -705,6 +912,8 @@ class MainWindow(QMainWindow):
         self.run_job(remove, done)
 
     def change_mode(self, mode):
+        if self.locked or self.mutating:
+            return
         site = self.current_site()
         if not site:
             return
@@ -724,8 +933,10 @@ class MainWindow(QMainWindow):
         self.status.setText(tr("Launch mode saved. If the portal has already selected a client, change its mode there too."))
 
     def connect_site(self):
+        if self.locked or self.mutating:
+            return
         site = self.current_site()
-        if not site or self.mutating:
+        if not site:
             return
         if site.id in self.sessions:
             self.selected(self.tabs.currentIndex())
@@ -755,6 +966,10 @@ class MainWindow(QMainWindow):
         self.run_job(lambda: self.vault.get(site.id), connected)
 
     def open_site_id(self, site_id):
+        if self.locked:
+            self.pending_site_id = site_id
+            self.unlock_secret.setFocus()
+            return
         if self.mutating:
             return
         # Reload so changes from the bar's on-disk list are reflected.
@@ -769,11 +984,15 @@ class MainWindow(QMainWindow):
             self.status.setText(tr("This site was not found."))
 
     def retry(self):
+        if self.locked or self.mutating:
+            return
         site = self.current_site()
         if site and site.id in self.sessions:
             self.sessions[site.id].retry()
 
     def pause(self):
+        if self.locked or self.mutating:
+            return
         site = self.current_site()
         if site and site.id in self.sessions:
             self.sessions[site.id].pause()
@@ -797,7 +1016,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self.jobs:
-            self.status.setText(tr("Please wait for the keyring operation to finish."))
+            self.status.setText(tr("Please wait for the current operation to finish."))
             event.ignore()
             return
         for site_id in list(self.sessions):

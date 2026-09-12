@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QCoreApplication, QEvent
 from PySide6.QtGui import QColor
 from omabridge.browser import PortalSession
+from omabridge.app_lock import AppLockStore
 from omabridge.models import Credentials, Site
 from omabridge.storage import SiteStore
 from omabridge.ui import MainWindow, SiteDialog, SettingsDialog
@@ -50,3 +51,10 @@ with tempfile.TemporaryDirectory() as directory:
     window.grab().save(str(destination / "tabs.png"))
     window.close()
     QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+    AppLockStore(Path(directory)).configure("1234", "pin")
+    locked = MainWindow(store)
+    locked.show()
+    app.processEvents()
+    locked.grab().save(str(destination / "lock.png"))
+    locked.close()
