@@ -82,7 +82,7 @@ review label or approval attestation was created.
 ## Scope and next steps
 
 The 0.3.0 regression tests cover both fixes, including custom password selectors
-and late download completion after session disposal. Choose a permanent plugin ID, then request the Marketplace's manual-setup review
+and late download completion after session disposal. The permanent plugin ID is now `io.github.flathack.omabridge`; request the Marketplace's manual-setup review
 for the installer. A maintainer must review the exact submitted commit under the
 [submission rules](https://github.com/omacom/omarchy-plugin-marketplace/blob/3942261b4943d19359b84e01be149491b800d3bc/SUBMISSION.md)
 and [security policy](https://github.com/omacom/omarchy-plugin-marketplace/blob/3942261b4943d19359b84e01be149491b800d3bc/SECURITY.md).

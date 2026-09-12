@@ -6,7 +6,7 @@ import qs.Commons
 
 Ui.BarWidget {
     id: root
-    moduleName: "local.omabridge"
+    moduleName: "io.github.flathack.omabridge"
     implicitWidth: vertical ? barSize : title.implicitWidth + Style.space(20)
     implicitHeight: barSize
 

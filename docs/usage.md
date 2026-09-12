@@ -45,7 +45,7 @@ cd OmaBridge
 ```
 
 The script installs the app into `~/.local/share/omabridge/venv`, a launcher into
-`~/.local/bin/omabridge`, a desktop entry, and the `local.omabridge` plugin into
+`~/.local/bin/omabridge`, a desktop entry, and the `io.github.flathack.omabridge` plugin into
 `~/.config/omarchy/plugins/`. It backs up an existing `shell.json`, enables the widget
 and places it on the right side of the bar. It does not modify Omarchy system files.
 XDG_CONFIG_HOME and XDG_DATA_HOME are respected.
@@ -213,7 +213,7 @@ site management with rollback, Chromium sign-in forms, origin checks, retry limi
 client selection and ICA handoff. Form and download tests use local fixtures;
 they **do not prove that a real Citrix connection works**.
 
-The initial version has not yet been tested against a real customer StoreFront.
+The project owner confirmed a successful practical test on 2026-09-12.
 Portal detection, client selection and HDX compatibility must be verified against
 the specific installation. There is no separate StoreFront API resource catalog:
 apps and desktops are selected in the original portal. SAML automation, push MFA,
@@ -225,6 +225,6 @@ Technical references: [Citrix StoreFront Web API](https://developer-docs.citrix.
 
 ## Removal
 
-`omarchy plugin disable local.omabridge` removes the widget from the bar. You can then
+`omarchy plugin disable io.github.flathack.omabridge` removes the widget from the bar. You can then
 remove the app files, launcher and desktop entry. To remove stored credentials as well,
 delete the sites in OmaBridge first; disabling the widget intentionally preserves credentials.

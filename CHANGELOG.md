@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.4.4 — 2026-09-12
+
+- Dauerhafte Plugin-ID `io.github.flathack.omabridge`.
+- Installer migriert bestehende Bar-Einträge mit Sicherung und erhält ihre Position und Einstellungen.
+- MIT-Lizenz und bestätigter Praxistest dokumentiert.
+
 ## 0.4.3 — 2026-09-12
 
 - Bar- und Launcher-IPC verwenden ein geprüftes privates Runtime-Verzeichnis.

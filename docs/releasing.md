@@ -6,6 +6,9 @@ Ein Push auf `main` führt Tests und Paketbau aus. Er veröffentlicht weder eine
 GitHub-Release noch ein PyPI-Paket und trägt das Plugin in keinen Katalog ein.
 Die CI-Artefakte sind Entwicklungs-Builds.
 
+Der Projektinhaber hat am 12.09.2026 den Praxistest der App bestätigt.
+Eine frische Installation bleibt als separater Release-Check bestehen.
+
 Vor dem ersten öffentlichen Release:
 
 1. MIT-Lizenz ist in `LICENSE` und den Paketmetadaten eingetragen; ihre Aufnahme in die Release-Pakete prüfen.
@@ -14,9 +17,8 @@ Vor dem ersten öffentlichen Release:
    Widget, nicht die erforderliche Python-App.
 3. Anmeldung mit nachgelagertem TOTP, Workspace-Start und HTML5-VM auf einer echten
    Citrix-Installation prüfen, einschließlich Tab-Wechsel und Sitzungsende.
-4. Plugin-ID festlegen. Der Entwicklungsstand verwendet `local.omabridge`.
-   Ein Wechsel auf einen Herausgeber-Namensraum erfordert auch Anpassungen in
-   Installer und Dokumentation sowie eine Migration der bestehenden Bar-Einträge.
+4. Die dauerhafte Plugin-ID ist `io.github.flathack.omabridge`. Der Installer migriert
+   vorhandene Einträge von `local.omabridge` mit Sicherung und erhält ihre Position.
 5. Version in `pyproject.toml`, `src/omabridge/__init__.py` und `manifest.json`
    gemeinsam setzen; Changelog und Screenshots aktualisieren.
 6. Tests, `bash scripts/check-plugin.sh` und Paketbau prüfen. Das Source-Archiv

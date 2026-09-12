@@ -5,7 +5,7 @@ project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/omabridge"
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
 bin_dir="$HOME/.local/bin"
-plugin_dir="$config_dir/omarchy/plugins/local.omabridge"
+plugin_dir="$config_dir/omarchy/plugins/io.github.flathack.omabridge"
 
 command -v python3 >/dev/null || { echo "Python 3.11+ is required." >&2; exit 1; }
 command -v omarchy >/dev/null || { echo "The Omarchy Shell is required." >&2; exit 1; }
@@ -34,7 +34,18 @@ PY
 if [ -f "$config_dir/omarchy/shell.json" ]; then
     cp -p "$config_dir/omarchy/shell.json" "$data_dir/shell.json.backup.$(date +%Y%m%d-%H%M%S)"
 fi
+"$data_dir/venv/bin/python" "$project_dir/scripts/migrate-plugin.py" "$config_dir" "$data_dir"
 omarchy-shell shell rescanPlugins
-omarchy plugin enable local.omabridge
-omarchy bar move local.omabridge --section right
+# Plugin discovery is asynchronous after rescanPlugins.
+for attempt in {1..25}; do
+    if enable_result=$(omarchy plugin enable io.github.flathack.omabridge 2>&1); then
+        echo "$enable_result"
+        break
+    fi
+    if [[ $enable_result != *"is not known"* || $attempt == 25 ]]; then
+        echo "$enable_result" >&2
+        exit 1
+    fi
+    sleep 0.2
+done
 echo "OmaBridge installed. Click Citrix in the bar to add a site."

@@ -46,7 +46,7 @@ the preference is saved and applies without closing sessions.
 
 ## Remove
 
-Run `omarchy plugin disable local.omabridge` to disable the widget.
+Run `omarchy plugin disable io.github.flathack.omabridge` to disable the widget.
 Delete sites in OmaBridge first if you also want to remove saved credentials.
 [Full removal instructions](docs/usage.md#removal).
 

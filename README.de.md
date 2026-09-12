@@ -47,7 +47,7 @@ sofort auf Deutsch. Die Auswahl bleibt gespeichert; Sitzungen bleiben geöffnet.
 
 ## Entfernen
 
-`omarchy plugin disable local.omabridge` deaktiviert das Widget.
+`omarchy plugin disable io.github.flathack.omabridge` deaktiviert das Widget.
 Zum Löschen der Zugangsdaten vorher die Sites in OmaBridge entfernen.
 [Weitere Schritte](docs/usage.de.md#entfernen).
 
