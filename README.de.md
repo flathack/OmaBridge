@@ -4,10 +4,12 @@
 
 Mit diesem Plugin kannst du dich über die Omarchy-Bar **automatisiert auf
 Citrix-Remote-Seiten einloggen**. Speichere mehrere Sites mit Benutzername,
-Passwort und TOTP-Schlüssel, wähle eine Site aus und starte eine App oder einen
+Passwort und optionalem TOTP-Schlüssel, wähle eine Site aus und starte eine App oder einen
 virtuellen Desktop mit **Citrix Workspace** oder im **integrierten HTML5-Browser**.
 
-![OmaBridge-Vorschau](docs/tabs.png)
+![OmaBridge-Demo: Desktop-Auswahl und Sitzungsstart](preview.png)
+
+*Kombinierte Demo-Abbildung mit fiktiven Namen und Branding.*
 
 - Zugangsdaten im Linux-Schlüsselbund (Secret Service).
 - Mehrstufige Anmeldung mit TOTP-Abfrage nach Benutzername und Passwort.
@@ -31,8 +33,11 @@ Erneutes Ausführen aktualisiert beides. `omarchy plugin add` allein installiert
 ## Verwendung
 
 **Citrix → Manage sites** (deutsch: **Sites verwalten**) und anschließend **+** wählen. HTTPS-Portal-URL,
-Zugangsdaten und **TOTP-Schlüssel** eintragen (Base32 oder `otpauth://`-Link,
-kein Einmalcode). Workspace oder Browser auswählen, speichern und die Site
+Zugangsdaten eintragen. **TOTP-Speicherung ist optional und standardmäßig aus**.
+Codes manuell im Portal eingeben oder einen Base32-Schlüssel bzw. `otpauth://`-Link
+speichern. Das gemeinsame Speichern mit dem Passwort ist unsicher und liegt in
+deiner Verantwortung; die App zeigt dazu eine Warnung.
+Workspace oder Browser auswählen, speichern und die Site
 in der Bar öffnen. App oder Desktop im Citrix-Portal auswählen.
 Standard ist Englisch. Unter **⋮ → Settings → Language → Deutsch** wechselst du
 sofort auf Deutsch. Die Auswahl bleibt gespeichert; Sitzungen bleiben geöffnet.

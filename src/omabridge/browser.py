@@ -196,14 +196,17 @@ class PortalSession(QWidget):
             return
         values = {"username": self.credentials.username, "password": self.credentials.password,
                   "otp": self.totp.code() if self.totp else ""}
-        if any(not values.get(role) for role in result["roles"]):
+        manual_otp = "otp" in result["roles"] and self.totp is None
+        required_roles = [role for role in result["roles"] if not (manual_otp and role == "otp")]
+        if any(not values.get(role) for role in required_roles):
             self.busy = False
             self.message.emit(tr("Credentials are missing. Edit the site or sign in directly in the portal."))
             return
         # Reserve before invoking page code, so reloads and errors cannot cause a retry storm.
         options = self.login_options()
         self.used_stages.add(stage)
-        self.evaluate(LOGIN_SCRIPT, {**options, "fill": True, "submit": True, "stage": stage, "values": values},
+        self.evaluate(LOGIN_SCRIPT, {**options, "fill": True, "submit": not manual_otp,
+                                    "manualOtp": manual_otp, "stage": stage, "values": values},
                       lambda result: self.filled(result, stage))
 
     def filled(self, result, stage):
@@ -211,7 +214,9 @@ class PortalSession(QWidget):
             return
         self.busy = False
         state = result.get("state") if isinstance(result, dict) else None
-        if state == "submitted":
+        if state == "manual-otp":
+            self.message.emit(tr("Enter the verification code in the portal and submit it there. Saving TOTP is optional."))
+        elif state == "submitted":
             # The next form gets its own interval, even after a slow first step.
             self.deadline = time.monotonic() + 90
             if "password" in stage.split("+") and "otp" not in stage.split("+") and self.totp:

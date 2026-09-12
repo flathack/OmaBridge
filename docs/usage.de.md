@@ -8,7 +8,7 @@ Citrix StoreFront aus der **Omarchy-Bar** öffnen: Site auswählen, mit Benutzer
 Passwort und TOTP anmelden, anschließend eine veröffentlichte App oder einen
 virtuellen Desktop im Citrix-Portal starten.
 
-![OmaBridge mit Site- und Sitzungs-Tabs (Vorschau)](tabs.png)
+![OmaBridge mit Site- und Sitzungs-Tabs (Vorschau)](../preview.png)
 
 ## Funktionen
 
@@ -67,9 +67,15 @@ Sitzungen bleiben erhalten. Die Sprache des Citrix-Portals wird dort eingestellt
 1. In der Bar auf **Citrix → Sites verwalten** klicken und in OmaBridge oben **+** wählen.
 2. Name und die vollständige **Receiver-for-Web-URL** eintragen, beispielsweise
    `https://citrix.firma.de/Citrix/StoreWeb/`. Keine URL mit Sitzungsticket speichern.
-3. Benutzername, Passwort und **TOTP-Schlüssel** eintragen. Unterstützt werden
+3. Benutzername und Passwort eintragen. **TOTP-Schlüssel speichern (optional)** ist
+   standardmäßig deaktiviert. Ohne Speicherung gibst du Codes manuell im Portal ein.
+   Bei aktivierter Speicherung unterstützt werden
    Base32-Schlüssel und `otpauth://totp/...`-Links; kein einzelner sechsstelliger Code.
    Ein QR-Code muss als otpauth-Link bzw. Schlüssel vorliegen; Bildimport ist nicht enthalten.
+   Sobald du einen Schlüssel eingibst, erscheint die Warnung: Die gemeinsame
+   Speicherung mit dem Passwort ist unsicher und liegt in deiner Verantwortung.
+   Deaktivieren und Speichern entfernt einen vorhandenen Schlüssel; Benutzername
+   und Passwort bleiben erhalten.
 4. Startmodus auswählen und speichern.
 5. Im Bar-Menü die Site wählen. OmaBridge öffnet das Portal und meldet sich an.
 6. Im Portal die gewünschte **App oder den Desktop** auswählen.
@@ -107,7 +113,11 @@ Portale lassen sich unter **⋮ → Site bearbeiten → Anmeldeformular anpassen
 | Anmelde-Button | `#loginBtn` |
 | Browser-Auswahl | `#useHtml5` (nur falls dieses Element im Portal existiert) |
 
-Bei einer zweistufigen Anmeldung wartet OmaBridge nach Benutzername/Passwort auf das
+Ohne gespeicherten TOTP-Schlüssel füllt OmaBridge Benutzername/Passwort aus; den
+Code gibst du selbst im Portal ein und bestätigst dort. Manuell eingegebene Codes
+werden weder überschrieben noch gespeichert.
+
+Bei einer zweistufigen Anmeldung mit gespeichertem Schlüssel wartet OmaBridge nach Benutzername/Passwort auf das
 nachgeladene Code-Formular und erzeugt den TOTP erst dafür neu. Auch Citrix-nFactor-
 Formulare mit `input#response` vom Typ `password` und der Beschriftung „Kennwort“
 werden über ihren sichtbaren Hinweis wie „Enter Your Microsoft verification code“

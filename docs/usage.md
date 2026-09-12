@@ -8,7 +8,7 @@ Open Citrix StoreFront from the **Omarchy bar**: choose a site, sign in with you
 username, password and TOTP, then launch a published app or virtual desktop from
 the Citrix portal.
 
-![OmaBridge with site and session tabs (preview)](tabs.png)
+![OmaBridge with site and session tabs (preview)](../preview.png)
 
 ## Features
 
@@ -64,9 +64,13 @@ Portal content uses its own language settings.
 1. Click **Citrix → Manage sites** in the bar, then **+** at the top of OmaBridge.
 2. Enter a name and the full **Receiver for Web URL**, for example
    `https://citrix.firma.de/Citrix/StoreWeb/`. Do not save a URL containing a session ticket.
-3. Enter your username, password and **TOTP secret**. Base32 secrets and
+3. Enter your username and password. **Store TOTP secret (optional)** is off by default.
+   Leave it off to enter codes manually in the portal. If enabled, Base32 secrets and
    `otpauth://totp/...` links are supported; an individual six-digit code is not a secret.
    A QR code must be provided as its otpauth link or secret; image import is not included.
+   A warning appears as soon as you enter a secret: storing it with your password
+   weakens two-factor authentication and is your responsibility. To remove a saved
+   secret, disable the checkbox and save; username and password are preserved.
 4. Choose the launch mode and save.
 5. Select the site in the bar menu. OmaBridge opens the portal and signs in.
 6. Select the desired **app or desktop** in the portal.
@@ -104,7 +108,10 @@ attributes and `autocomplete` values. Configure custom portals under
 | Sign-in button | `#loginBtn` |
 | Browser selection | `#useHtml5` (only if this element exists in the portal) |
 
-For two-step sign-in, OmaBridge waits for the code form after submitting the username
+Without a saved TOTP secret, OmaBridge fills username/password but leaves the OTP
+field and submission to you. Manually entered codes are neither overwritten nor saved.
+
+For two-step sign-in with a saved secret, OmaBridge waits for the code form after submitting the username
 and password, then generates a fresh TOTP for that step. Citrix nFactor forms with
 an `input#response` of type `password` and the label “Kennwort” are also recognized
 using visible prompts such as “Enter Your Microsoft verification code”. Without an

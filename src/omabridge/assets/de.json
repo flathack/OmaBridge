@@ -129,5 +129,10 @@
   "settings.json is invalid; it has not been overwritten.": "settings.json ist ungültig; die Datei wurde nicht überschrieben.",
   "Unsupported language.": "Nicht unterstützte Sprache.",
   "Applies immediately. Open Citrix sessions stay connected.": "Gilt sofort. Offene Citrix-Sitzungen bleiben verbunden.",
-  "Bar language and sites as JSON (without credentials)": "Bar-Sprache und Sites als JSON (ohne Zugangsdaten)"
+  "Bar language and sites as JSON (without credentials)": "Bar-Sprache und Sites als JSON (ohne Zugangsdaten)",
+  "Store TOTP secret (optional)": "TOTP-Schlüssel speichern (optional)",
+  "Leave this off to enter verification codes manually in the portal. Turning it off and saving removes an existing TOTP secret.": "Deaktiviert lassen, um Bestätigungscodes manuell im Portal einzugeben. Deaktivieren und Speichern entfernt einen bereits gespeicherten TOTP-Schlüssel.",
+  "Storing TOTP secrets alongside passwords is insecure: access to both can defeat two-factor authentication. Only use this option if you accept the risk; it is your responsibility.": "Das Speichern von TOTP-Schlüsseln zusammen mit Passwörtern ist unsicher: Zugriff auf beides kann die Zwei-Faktor-Authentifizierung aushebeln. Nutze diese Option nur, wenn du das Risiko akzeptierst; die Verantwortung liegt bei dir.",
+  "TOTP security warning": "TOTP-Sicherheitswarnung",
+  "Enter the verification code in the portal and submit it there. Saving TOTP is optional.": "Gib den Bestätigungscode im Portal ein und sende ihn dort ab. Das Speichern von TOTP ist optional."
 }

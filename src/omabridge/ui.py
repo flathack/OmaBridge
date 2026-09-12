@@ -133,6 +133,8 @@ class SiteDialog(QDialog):
         self.totp = QLineEdit(credentials.totp)
         self.totp.setEchoMode(QLineEdit.EchoMode.Password)
         self.totp.setPlaceholderText(tr("Base32 secret or otpauth://totp/…"))
+        self.store_totp = QCheckBox(tr("Store TOTP secret (optional)"))
+        self.store_totp.setChecked(bool(credentials.totp))
         self.mode = QComboBox()
         self.mode.addItem("Citrix Workspace App", "workspace")
         self.mode.addItem(tr("Browser · HTML5 in OmaBridge"), "browser")
@@ -140,10 +142,24 @@ class SiteDialog(QDialog):
         self.auto = QCheckBox(tr("Sign in automatically when selecting a site"))
         self.auto.setChecked(site.auto_login if site else True)
         for text, widget in [("Name", self.name), (tr("Portal URL"), self.url), (tr("Username"), self.username),
-                             (tr("Password"), self.password), (tr("TOTP secret"), self.totp), (tr("Open with"), self.mode)]:
+                             (tr("Password"), self.password)]:
             form.addRow(text, widget)
             widget.setAccessibleName(text)
-        form.addRow("", label(tr("The TOTP secret is stored and used to generate a fresh code for each sign-in."), "muted"))
+        form.addRow("", self.store_totp)
+        form.addRow(tr("TOTP secret"), self.totp)
+        self.totp.setAccessibleName(tr("TOTP secret"))
+        form.addRow("", label(tr("Leave this off to enter verification codes manually in the portal. Turning it off and saving removes an existing TOTP secret."), "muted"))
+        self.totp_warning = label(tr("Storing TOTP secrets alongside passwords is insecure: access to both can defeat two-factor authentication. Only use this option if you accept the risk; it is your responsibility."))
+        self.totp_warning.setObjectName("totpWarning")
+        self.totp_warning.setStyleSheet("color: #f5c879; background: #362b1b; border: 1px solid #80612c; border-radius: 5px; padding: 10px;")
+        self.totp_warning.setAccessibleName(tr("TOTP security warning"))
+        self.totp_warning.setAccessibleDescription(self.totp_warning.text())
+        form.addRow("", self.totp_warning)
+        self.store_totp.toggled.connect(self.update_totp_state)
+        self.totp.textChanged.connect(self.update_totp_state)
+        self.update_totp_state()
+        form.addRow(tr("Open with"), self.mode)
+        self.mode.setAccessibleName(tr("Open with"))
         form.addRow("", self.auto)
         form.addRow("", label(tr("Username, password and TOTP are stored in the Linux keyring. Empty credential fields remove the saved value."), "muted"))
         self.advanced = QCheckBox(tr("Customize sign-in form"))
@@ -183,6 +199,11 @@ class SiteDialog(QDialog):
         actions.rejected.connect(self.reject)
         outer.addWidget(actions)
 
+    def update_totp_state(self, *_):
+        enabled = self.store_totp.isChecked()
+        self.totp.setEnabled(enabled)
+        self.totp_warning.setVisible(enabled and bool(self.totp.text().strip()))
+
     def validate(self):
         try:
             data = dict(name=self.name.text(), url=self.url.text(), mode=self.mode.currentData(),
@@ -190,7 +211,8 @@ class SiteDialog(QDialog):
             if self.site:
                 data["id"] = self.site.id
             site = Site(**data)
-            credentials = Credentials(self.username.text().strip(), self.password.text(), self.totp.text().strip())
+            credentials = Credentials(self.username.text().strip(), self.password.text(),
+                                      self.totp.text().strip() if self.store_totp.isChecked() else "")
             if credentials.totp:
                 Totp.parse(credentials.totp)
             self.value = site, credentials

@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.3.1 — 2026-09-12
+
+- Gemeinsame Demo-Abbildung mit fiktiven Namen und Branding in beiden READMEs.
+- TOTP-Speicherung ausdrücklich optional und bei neuen Sites deaktiviert.
+- Sichtbare Warnung zum Risiko und zur Eigenverantwortung bei TOTP-Eingabe.
+- Manuelle Code-Eingabe ohne Überschreiben oder automatisches Absenden.
+
 ## 0.3.0 — 2026-09-12
 
 - Englisch als Standardsprache; Deutsch unter Settings → Language auswählbar.

@@ -284,3 +284,33 @@ def test_foreign_citrix_challenge_never_receives_code(app, session):
     html(app, session.page, CHALLENGE, "https://other.test/logon/LogonPoint/tmindex.html")
     tick(app, session)
     assert js(app, session.page, "document.querySelector('#response').value") == ""
+
+
+def test_optional_totp_allows_first_step_then_manual_challenge(app, session):
+    session.totp = None
+    html(app, session.page, FORM.replace('<input id="otp">', ''))
+    tick(app, session)
+    assert js(app, session.page, 'document.body.dataset.submits') == '1'
+    html(app, session.page, CHALLENGE)
+    messages = []
+    session.message.connect(messages.append)
+    tick(app, session)
+    assert js(app, session.page, 'response.value') == ''
+    assert js(app, session.page, 'document.body.dataset.submits || "0"') == '0'
+    assert 'Saving TOTP is optional' in messages[-1]
+    js(app, session.page, 'response.value = "654321"')
+    tick(app, session)
+    assert js(app, session.page, 'response.value') == '654321'
+    assert js(app, session.page, 'document.body.dataset.submits || "0"') == '0'
+
+
+def test_optional_totp_fills_credentials_but_preserves_manual_code(app, session):
+    session.totp = None
+    html(app, session.page, FORM)
+    js(app, session.page, 'otp.value = "654321"')
+    tick(app, session)
+    assert js(app, session.page, '[username.value, password.value, otp.value]') == ['demo', 'account-password', '654321']
+    assert js(app, session.page, 'document.body.dataset.submits || "0"') == '0'
+    js(app, session.page, 'password.value = "user-edited"')
+    tick(app, session)
+    assert js(app, session.page, 'password.value') == 'user-edited'

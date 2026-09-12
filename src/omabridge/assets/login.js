@@ -60,7 +60,8 @@
     const stage = roles.join("+");
     if (!options.fill) return {state: "ready", stage, roles};
     if (options.stage !== stage) return {state: "changed"};
-    if (roles.some(role => !options.values[role])) return {state: "missing"};
+    const fillRoles = options.manualOtp ? roles.filter(role => role !== 'otp') : roles;
+    if (fillRoles.some(role => !options.values[role])) return {state: "missing"};
     let submit;
     try {
         const matches = [...(form || document).querySelectorAll(options.selectors.submit ||
@@ -71,11 +72,13 @@
     if (submit && submit.formAction && new URL(submit.formAction, location.href).origin !== options.origin)
         return {state: "untrusted-action"};
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
-    for (const role of roles) {
+    for (const role of fillRoles) {
         setter.call(fields[role], options.values[role]);
         fields[role].dispatchEvent(new Event("input", {bubbles: true}));
         fields[role].dispatchEvent(new Event("change", {bubbles: true}));
     }
+    // Without a stored secret, preserve the user's code and let them submit.
+    if (options.manualOtp) return {state: "manual-otp", stage};
     // AJAX portals sometimes render the button after the input. Fill the code
     // now and wait for a unique button without spending the submission budget.
     if (options.submit && !submit) return {state: "awaiting-submit", stage};

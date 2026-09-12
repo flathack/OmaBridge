@@ -37,6 +37,7 @@ def enter_site(name="Büro", url="https://citrix.test/Citrix/StoreWeb/"):
     dialog.url.setText(url)
     dialog.username.setText("demo-user")
     dialog.password.setText("test-password")
+    dialog.store_totp.setChecked(True)
     dialog.totp.setText("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
     dialog.validate()
 
@@ -101,6 +102,7 @@ def test_invalid_totp_prevents_saving(app):
     dialog = SiteDialog(None)
     dialog.name.setText("Büro")
     dialog.url.setText("https://citrix.test")
+    dialog.store_totp.setChecked(True)
     dialog.totp.setText("123456")
     dialog.validate()
     assert dialog.value is None
@@ -275,3 +277,55 @@ def test_cancel_language_settings_does_not_change_preference(app, tab_window):
     tab_window.open_settings()
     assert language() == 'en'
     assert not tab_window.preferences.path.exists()
+
+
+def test_totp_storage_is_opt_in_and_warning_follows_input(app):
+    dialog = SiteDialog(None)
+    dialog.name.setText('Demo')
+    dialog.url.setText('https://citrix.test')
+    dialog.username.setText('demo-user')
+    dialog.password.setText('test-password')
+    assert not dialog.store_totp.isChecked()
+    assert not dialog.totp.isEnabled() and dialog.totp_warning.isHidden()
+    dialog.store_totp.setChecked(True)
+    dialog.totp.setText('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ')
+    assert not dialog.totp_warning.isHidden()
+    assert 'insecure' in dialog.totp_warning.text()
+    assert 'your responsibility' in dialog.totp_warning.text()
+    dialog.store_totp.setChecked(False)
+    assert dialog.totp_warning.isHidden()
+    dialog.validate()
+    assert dialog.value[1] == Credentials('demo-user', 'test-password', '')
+    dialog.deleteLater()
+
+
+def test_disabling_totp_removes_only_saved_secret(app, tmp_path):
+    site = Site('Demo', 'https://citrix.test')
+    credentials = Credentials('demo-user', 'test-password', 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ')
+    store, vault = SiteStore(tmp_path), MemoryVault()
+    store.save([site])
+    vault.set(site.id, credentials)
+    window = MainWindow(store, vault)
+    def disable():
+        dialog = QApplication.activeModalWidget()
+        assert dialog.store_totp.isChecked()
+        assert not dialog.totp_warning.isHidden()
+        dialog.store_totp.setChecked(False)
+        dialog.validate()
+    QTimer.singleShot(0, disable)
+    window.edit_dialog(site, credentials)
+    wait_for(app, lambda: not window.jobs)
+    assert vault.get(site.id) == Credentials('demo-user', 'test-password', '')
+    assert store.load() == [site]
+    window.close()
+
+
+def test_totp_warning_is_available_in_german(app):
+    from omabridge.i18n import set_language
+    set_language('de')
+    dialog = SiteDialog(None, credentials=Credentials(totp='GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'))
+    assert 'optional' in dialog.store_totp.text()
+    assert 'unsicher' in dialog.totp_warning.text()
+    assert 'Verantwortung liegt bei dir' in dialog.totp_warning.text()
+    dialog.close()
+    dialog.deleteLater()
