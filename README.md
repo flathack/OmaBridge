@@ -1,41 +1,42 @@
 # OmaBridge
 
+**English** | [Deutsch](README.de.md)
+
 [![CI](https://github.com/flathack/OmaBridge/actions/workflows/ci.yml/badge.svg)](https://github.com/flathack/OmaBridge/actions/workflows/ci.yml)
 
-Citrix StoreFront aus der **Omarchy-Bar** öffnen: Site auswählen, mit Benutzername,
-Passwort und TOTP anmelden, anschließend eine veröffentlichte App oder einen
-virtuellen Desktop im Citrix-Portal starten.
+Open Citrix StoreFront from the **Omarchy bar**: choose a site, sign in with your
+username, password and TOTP, then launch a published app or virtual desktop from
+the Citrix portal.
 
-![OmaBridge mit Site- und Sitzungs-Tabs (Vorschau)](docs/tabs.png)
+![OmaBridge with site and session tabs (preview)](docs/tabs.png)
 
-## Funktionen
+## Features
 
-- Mehrere Sites hinzufügen, bearbeiten und entfernen; direkte Auswahl im Bar-Popup.
-- Benutzername, Passwort und TOTP-Schlüssel im Linux-Schlüsselbund (Secret Service).
-- Automatische Anmeldung für erkannte StoreFront-Formulare, auch in mehreren Schritten.
-- Pro Site **Citrix Workspace** oder **Browser / HTML5 in OmaBridge** auswählen.
-- Eigene, nicht auf Datenträger gespeicherte Browser-Sitzung je Site; HTML5-Popups
-  öffnen als zusätzliche Tabs und verwenden dieselbe Sitzung. Bereits geöffnete
-  Sites bleiben beim Wechsel erhalten.
-- Nur eine 42 Pixel hohe obere Leiste: Navigation, Tabs, Hinzufügen, Info und Menü.
-  Portal und VM nutzen die gesamte übrige Fläche, ohne Seitenleiste, Innenränder oder Statusleiste.
-- Formularfelder und Client-Auswahl bei angepassten Portalen über CSS-Selektoren konfigurieren.
-- Ein laufendes OmaBridge-Fenster wird bei weiteren Bar-Klicks wiederverwendet.
+- Add, edit and remove multiple sites; select them directly from the bar popup.
+- Store usernames, passwords and TOTP secrets in the Linux keyring (Secret Service).
+- Automatic sign-in for recognized StoreFront forms, including multiple steps.
+- Choose **Citrix Workspace** or **Browser / HTML5 inside OmaBridge** for each site.
+- Each site has its own browser session that is not persisted to disk. HTML5 popups
+  open in additional tabs sharing that session. Open sites stay connected when switching tabs.
+- A single 42-pixel top bar with navigation, tabs, add, info and menu controls.
+  The portal and VM fill the remaining space, without a sidebar, inner margins or status bar.
+- Configure form fields and client selection for customized portals using CSS selectors.
+- Further clicks in the bar reuse the running OmaBridge window.
 
-## Voraussetzungen
+## Requirements
 
-- Omarchy mit der **Quickshell-Bar** und `omarchy plugin` (kein Waybar-Plugin).
-- Python **3.11+**, pip und venv. Installation lädt PySide6 einschließlich Qt WebEngine.
-- Ein laufender, entsperrbarer **Secret Service**, z. B. GNOME Keyring.
-- Für den nativen Modus: Citrix Workspace für Linux mit `wfica` im PATH oder
+- Omarchy with the **Quickshell bar** and `omarchy plugin` (this is not a Waybar plugin).
+- Python **3.11+**, pip and venv. Installation downloads PySide6, including Qt WebEngine.
+- A running **Secret Service** that can be unlocked, such as GNOME Keyring.
+- For native mode: Citrix Workspace for Linux with `wfica` on your PATH or at
   `/opt/Citrix/ICAClient/wfica`.
-- Für HTML5: ein StoreFront-Portal mit serverseitig aktiviertem Browser-Client und
-  passender HDX-/WebSocket-Konfiguration.
-- Gültige HTTPS-Zertifikate und eine korrekt synchronisierte Systemzeit für TOTP.
+- For HTML5: a StoreFront portal with the browser client enabled on the server and
+  an appropriate HDX/WebSocket configuration.
+- Valid HTTPS certificates and a correctly synchronized system clock for TOTP.
 
 ## Installation
 
-Repository klonen und installieren:
+Clone the repository and install:
 
 ```bash
 git clone https://github.com/flathack/OmaBridge.git
@@ -43,112 +44,115 @@ cd OmaBridge
 ./scripts/install.sh
 ```
 
-Das Skript installiert die App in `~/.local/share/omabridge/venv`, einen Launcher in
-`~/.local/bin/omabridge`, einen Desktop-Eintrag und das Plugin `local.omabridge` in
-`~/.config/omarchy/plugins/`. Es sichert eine vorhandene `shell.json`, aktiviert das
-Widget und platziert es rechts in der Bar. Es verändert keine Omarchy-Systemdateien.
-XDG_CONFIG_HOME und XDG_DATA_HOME werden berücksichtigt.
+The script installs the app into `~/.local/share/omabridge/venv`, a launcher into
+`~/.local/bin/omabridge`, a desktop entry, and the `local.omabridge` plugin into
+`~/.config/omarchy/plugins/`. It backs up an existing `shell.json`, enables the widget
+and places it on the right side of the bar. It does not modify Omarchy system files.
+XDG_CONFIG_HOME and XDG_DATA_HOME are respected.
 
-Eine erneute Ausführung aktualisiert App und Widget. Der Schlüsselbund und die
-gespeicherten Sites bleiben erhalten. `omarchy plugin add` allein installiert die
-Python-App nicht; für die vollständige Installation das Skript verwenden.
+Running the script again updates the app and widget while preserving the keyring
+and saved sites. `omarchy plugin add` alone does not install the Python app;
+use the script for a complete installation.
 
-## Erste Verbindung
+## Your first connection
 
-1. In der Bar auf **Citrix → Sites verwalten** klicken und in OmaBridge oben **+** wählen.
-2. Name und die vollständige **Receiver-for-Web-URL** eintragen, beispielsweise
-   `https://citrix.firma.de/Citrix/StoreWeb/`. Keine URL mit Sitzungsticket speichern.
-3. Benutzername, Passwort und **TOTP-Schlüssel** eintragen. Unterstützt werden
-   Base32-Schlüssel und `otpauth://totp/...`-Links; kein einzelner sechsstelliger Code.
-   Ein QR-Code muss als otpauth-Link bzw. Schlüssel vorliegen; Bildimport ist nicht enthalten.
-4. Startmodus auswählen und speichern.
-5. Im Bar-Menü die Site wählen. OmaBridge öffnet das Portal und meldet sich an.
-6. Im Portal die gewünschte **App oder den Desktop** auswählen.
+The app currently uses German UI labels; the instructions below include those
+labels so you can find the corresponding controls.
 
-Bei der Client-Auswahl erkennt OmaBridge gängige englische und deutsche Schaltflächen
-wie „Use web browser“, „Webbrowser verwenden“ und „Already installed“. Wenn das Portal
-andere Schaltflächen verwendet, dort einmal den gewünschten Client wählen oder unter
-**Anmeldeformular anpassen** einen Selektor hinterlegen. Der Startmodus ist eine
-gespeicherte Auswahl mit automatischer Bedienung erkannter Portal-Schaltflächen;
-er erzwingt keine serverseitig gesperrte Funktion und überschreibt nicht jede vorhandene
-Portal-Präferenz. Ein späterer Wechsel kann eine zusätzliche Auswahl im Portal erfordern.
+1. Click **Citrix → Sites verwalten** (manage sites) in the bar, then **+** at the top of OmaBridge.
+2. Enter a name and the full **Receiver for Web URL**, for example
+   `https://citrix.firma.de/Citrix/StoreWeb/`. Do not save a URL containing a session ticket.
+3. Enter your username, password and **TOTP secret**. Base32 secrets and
+   `otpauth://totp/...` links are supported; an individual six-digit code is not a secret.
+   A QR code must be provided as its otpauth link or secret; image import is not included.
+4. Choose the launch mode and save.
+5. Select the site in the bar menu. OmaBridge opens the portal and signs in.
+6. Select the desired **app or desktop** in the portal.
 
-**Browser** bezeichnet den integrierten Chromium-Browser von OmaBridge, nicht einen
-externen Firefox-/Chrome-Prozess. Dadurch bleiben Anmeldung und HTML5-Sitzung im selben
-isolierten Kontext. Browser-Modus startet niemals versehentlich eine native ICA-Sitzung.
+For client selection, OmaBridge recognizes common English and German buttons such
+as “Use web browser”, “Webbrowser verwenden” and “Already installed”. If your portal
+uses different controls, select the client manually once or configure a selector
+under **Anmeldeformular anpassen** (customize sign-in form). The launch mode is a saved
+preference that automatically operates recognized portal buttons; it cannot enable
+features blocked by the server or override every existing portal preference.
+Changing modes later may require another selection in the portal.
 
-Die obere Leiste bleibt immer sichtbar. **⋮** enthält Site-Einstellungen, Startmodus,
-Anmeldung und Vollbild; **ⓘ** zeigt Status und Portal-Adresse. **F11** schaltet Vollbild,
-**Ctrl+Tab** wechselt Tabs, **Ctrl+W** schließt den aktuellen Tab. Geschlossene Sites
-bleiben gespeichert und lassen sich unter **⋮ → Gespeicherte Sites** wieder öffnen.
-HTML5-Apps und Desktops starten in eigenen Tabs; das Schließen des zugehörigen Site-Tabs
-schließt auch diese Sitzungs-Tabs. Native Workspace-Fenster bleiben unabhängig.
+**Browser** means OmaBridge's integrated Chromium browser, not an external Firefox
+or Chrome process. Sign-in and the HTML5 session therefore share the same isolated
+context. Browser mode never launches a native ICA session by accident.
 
-## Angepasste Anmeldung und Fehler
+The top bar stays visible. **⋮** contains site settings, launch mode, sign-in and
+fullscreen controls; **ⓘ** shows status and the portal address. **F11** toggles fullscreen,
+**Ctrl+Tab** switches tabs, and **Ctrl+W** closes the current tab. Closed sites remain
+saved and can be reopened under **⋮ → Gespeicherte Sites** (saved sites).
+HTML5 apps and desktops open in their own tabs; closing their parent site tab also
+closes these session tabs. Native Workspace windows remain independent.
 
-Die Standard-Erkennung berücksichtigt unter anderem `#username`, `#password`, `#otp`,
-`#passwd1`, die üblichen `name`-Attribute und `autocomplete`-Angaben. Individuelle
-Portale lassen sich unter **⋮ → Site bearbeiten → Anmeldeformular anpassen** konfigurieren:
+## Customized sign-in and troubleshooting
 
-| Feld | Beispiel für einen CSS-Selektor |
+Default detection includes `#username`, `#password`, `#otp`, `#passwd1`, common `name`
+attributes and `autocomplete` values. Configure custom portals under
+**⋮ → Site bearbeiten → Anmeldeformular anpassen** (edit site → customize sign-in form):
+
+| Field | Example CSS selector |
 | --- | --- |
-| Benutzername | `#username` |
-| Passwort | `#password` |
+| Username | `#username` |
+| Password | `#password` |
 | TOTP | `#verificationCode` |
-| Anmelde-Button | `#loginBtn` |
-| Browser-Auswahl | `#useHtml5` (nur falls dieses Element im Portal existiert) |
+| Sign-in button | `#loginBtn` |
+| Browser selection | `#useHtml5` (only if this element exists in the portal) |
 
-Bei einer zweistufigen Anmeldung wartet OmaBridge nach Benutzername/Passwort auf das
-nachgeladene Code-Formular und erzeugt den TOTP erst dafür neu. Auch Citrix-nFactor-
-Formulare mit `input#response` vom Typ `password` und der Beschriftung „Kennwort“
-werden über ihren sichtbaren Hinweis wie „Enter Your Microsoft verification code“
-erkannt. Fehlt dieser eindeutige Hinweis, wird ein generisches Passwortfeld nicht
-als TOTP-Feld behandelt. Ein später erscheinender Senden-Button wird weiter beobachtet.
+For two-step sign-in, OmaBridge waits for the code form after submitting the username
+and password, then generates a fresh TOTP for that step. Citrix nFactor forms with
+an `input#response` of type `password` and the label “Kennwort” are also recognized
+using visible prompts such as “Enter Your Microsoft verification code”. Without an
+unambiguous prompt, a generic password field is not treated as a TOTP field.
+OmaBridge continues watching for a submit button that appears later.
 
-OmaBridge füllt nur sichtbare, eindeutige Eingabefelder im Hauptdokument auf der exakt
-gespeicherten HTTPS-Origin aus. Bei Weiterleitung auf einen anderen Host oder Port,
-einer Anmeldung in einem iframe, unbekannten Feldern oder einem Passwortwechsel erfolgt
-keine automatische Übergabe. Dann direkt im Portal fortfahren. Die aktuelle Portal-Adresse
-wird unter **ⓘ** angezeigt, ohne Query-Parameter und Fragmente.
+OmaBridge only fills visible, unambiguous fields in the main document on the exact
+saved HTTPS origin. A redirect to another host or port, sign-in inside an iframe,
+unknown fields or a password change stops automatic credential submission.
+Continue manually in the portal in those cases. The current portal address is
+available under **ⓘ**, with query parameters and fragments removed.
 
-Jede Feldkombination wird pro Verbindungsversuch höchstens einmal abgeschickt,
-insgesamt maximal drei Schritte. Nach jedem gesendeten Schritt bleiben weitere
-90 Sekunden für das nächste Formular. Bei einer Fehlermeldung
-zuerst Zugangsdaten prüfen. **Anmeldung erneut** erlaubt ausdrücklich einen weiteren
-Versuch; **Automatik pausieren** stoppt weitere automatische Schritte. TOTP-Codes mit
-weniger als fünf Sekunden Restlaufzeit werden nicht verwendet.
+Each field combination is submitted at most once per connection attempt, with a
+maximum of three steps overall. Each submitted step starts a new 90-second window
+for the next form. If an error appears, check your credentials first.
+**Anmeldung erneut** (retry sign-in) explicitly allows another attempt;
+**Automatik pausieren** (pause automation) stops further automatic steps.
+TOTP codes with fewer than five seconds remaining are not used.
 
-Falls der Schlüsselbund nicht erreichbar ist, wird ein Fehler angezeigt. OmaBridge
-weicht nicht auf Klartextdateien aus. Wenn `wfica` fehlt, Workspace installieren oder
-den Browser-Modus wählen. Wenn das Portal im Browser-Modus dennoch eine ICA-Datei liefert,
-weist OmaBridge auf die nötige HTML5-Auswahl im Portal hin.
+If the keyring is unavailable, OmaBridge displays an error rather than falling back
+to plaintext files. If `wfica` is missing, install Workspace or choose browser mode.
+If the portal still returns an ICA file in browser mode, OmaBridge prompts you to
+select HTML5 in the portal.
 
-## Datenschutz und Sitzungen
+## Privacy and sessions
 
-- `~/.config/omabridge/sites.json`: Site-ID, Name, URL, Startmodus und Formular-Einstellungen;
-  atomisch geschrieben, Verzeichnis mit Modus `0700`, Datei mit `0600`.
-- Secret Service: Benutzername, Passwort und TOTP gemeinsam pro Site-ID. Kein
-  Klartext-Fallback. Zugangsdaten liegen während der Nutzung auch im Prozessspeicher.
-- Das Bar-Plugin erhält ausschließlich Site-ID, Anzeigename und Startmodus. Es hat
-  keine eigene Zugangsdaten-Schnittstelle. Andere Prozesse unter demselben Linux-Benutzer
-  sind keine isolierte Sicherheitsgrenze.
-- Automatisierung läuft im isolierten JavaScript-Kontext. Die Portal-Felder erhalten
-  die zur Anmeldung benötigten Werte; der TOTP-Schlüssel wird nie in das Portal injiziert.
-- ICA-Downloads werden nur von der gespeicherten Portal-Origin angenommen, geprüft
-  und mit zufälligem Dateinamen in einem privaten temporären Verzeichnis gespeichert.
-  Workspace erhält ausschließlich den Dateipfad als Argument, keine Shell-Befehle.
-  `RemoveICAFile=yes`, Prozess-Ende, Fünf-Minuten-Frist und App-Ende räumen Tickets auf.
-- Chromium-Sandbox und Zertifikatsprüfung bleiben eingeschaltet. Portal-Konsolenlogs
-  werden unterdrückt. Es gibt keine Telemetrie oder Fernspeicherung durch OmaBridge.
-- **Tab schließen** auf einem Site-Tab verwirft den lokalen Kontext. Das ist kein serverseitiges Logoff;
-  bei Bedarf vorher im Citrix-Portal abmelden. Native Workspace-Sitzungen laufen separat
-  weiter; integrierte HTML5-Tabs schließen zusammen mit ihrer Portal-Sitzung.
+- `~/.config/omabridge/sites.json` stores site IDs, names, URLs, launch modes and form
+  settings. Writes are atomic; directory permissions are `0700`, file permissions `0600`.
+- Secret Service stores the username, password and TOTP secret together for each
+  site ID. There is no plaintext fallback. Credentials also reside in process memory during use.
+- The bar plugin only receives the site ID, display name and launch mode. It has no
+  credential API of its own. Other processes running as the same Linux user are not
+  separated by a security boundary.
+- Automation runs in an isolated JavaScript context. Portal fields receive the
+  values needed to sign in; the TOTP secret itself is never injected into the portal.
+- ICA downloads are accepted only from the saved portal origin, validated and saved
+  under random filenames in a private temporary directory. Workspace receives only
+  the file path as an argument, not shell commands. `RemoveICAFile=yes`, process exit,
+  a five-minute timeout and app shutdown provide ticket cleanup.
+- The Chromium sandbox and certificate validation remain enabled. Portal console
+  logs are suppressed. OmaBridge has no telemetry or remote data storage.
+- **Tab schließen** (close tab) on a site tab discards the local context. This is not
+  a server-side logoff; sign out in the Citrix portal first if needed. Native Workspace
+  sessions continue independently; integrated HTML5 tabs close with their portal session.
 
-## Entwicklung und Prüfung
+## Development and testing
 
-Beiträge: [CONTRIBUTING.md](CONTRIBUTING.md). Änderungen:
-[CHANGELOG.md](CHANGELOG.md). Vorbereitung einer Veröffentlichung:
-[docs/releasing.md](docs/releasing.md).
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Changes:
+[CHANGELOG.md](CHANGELOG.md). Release preparation:
+[docs/releasing.md](docs/releasing.md). These supporting documents are currently in German.
 
 ```bash
 python3 -m venv .venv
@@ -159,24 +163,23 @@ bash scripts/check-plugin.sh
 .venv/bin/python scripts/preview.py
 ```
 
-Die Tests prüfen TOTP anhand RFC-6238-Vektoren, private/atomische Speicherung,
-Schlüsselbund-Fehler, CRUD samt Rollback, Chromium-Anmeldeformulare, Origin-Prüfungen,
-Wiederholungsbegrenzung, Client-Auswahl und die ICA-Übergabe. Formular- und Downloadtests
-verwenden lokale Fixtures; sie sind **kein Nachweis einer echten Citrix-Verbindung**.
+Tests cover TOTP against RFC 6238 vectors, private and atomic storage, keyring errors,
+site management with rollback, Chromium sign-in forms, origin checks, retry limits,
+client selection and ICA handoff. Form and download tests use local fixtures;
+they **do not prove that a real Citrix connection works**.
 
-Die erste Version wurde noch nicht gegen ein reales Kunden-StoreFront getestet.
-Portal-Erkennung, Client-Auswahl und HDX-Kompatibilität müssen mit der konkreten
-Installation verifiziert werden. Es gibt keinen eigenen StoreFront-API-Katalog:
-App- und Desktop-Auswahl bleiben im Originalportal. SAML-Automatisierung, Push-MFA,
-Client-Zertifikate und ein externer Browser mit Sitzungsübertragung sind nicht implementiert.
+The initial version has not yet been tested against a real customer StoreFront.
+Portal detection, client selection and HDX compatibility must be verified against
+the specific installation. There is no separate StoreFront API resource catalog:
+apps and desktops are selected in the original portal. SAML automation, push MFA,
+client certificates and session transfer to an external browser are not implemented.
 
-Technische Referenzen: [Citrix StoreFront Web API](https://developer-docs.citrix.com/en-us/storefront/storefront-web-api/getting-started.html),
-[Citrix Browser-Zugriff](https://docs.citrix.com/en-us/storefront/current-release/get-started/user-access-options.html),
+Technical references: [Citrix StoreFront Web API](https://developer-docs.citrix.com/en-us/storefront/storefront-web-api/getting-started.html),
+[Citrix browser access](https://docs.citrix.com/en-us/storefront/current-release/get-started/user-access-options.html),
 [Qt WebEngine Profile](https://doc.qt.io/qtforpython-6/PySide6/QtWebEngineCore/QWebEngineProfile.html).
 
-## Entfernen
+## Removal
 
-`omarchy plugin disable local.omabridge` nimmt das Widget aus der Bar. App-Dateien,
-Launcher und Desktop-Eintrag können danach entfernt werden. Um die zugehörigen
-Zugangsdaten mitzulentfernen, zuerst die Sites in OmaBridge löschen; das Deaktivieren
-des Widgets löscht absichtlich keine Zugangsdaten.
+`omarchy plugin disable local.omabridge` removes the widget from the bar. You can then
+remove the app files, launcher and desktop entry. To remove stored credentials as well,
+delete the sites in OmaBridge first; disabling the widget intentionally preserves credentials.
