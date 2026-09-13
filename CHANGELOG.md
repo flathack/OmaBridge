@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.4.5 — 2026-09-13
+
+- Vollständiger Hash-Lock für Build- und Laufzeitpakete; kein Nachladen beim App-Build.
+- Frische Python-Umgebung pro Update; bestehende Umgebungen bleiben unverändert.
+- Installationsnachweis und exakte Altversions-Hashes schützen vorhandene Dateien.
+- Symlink-, Hardlink- und Dateikonflikte führen zum Abbruch; atomare Schreibvorgänge.
+- Unsichere automatische Migration alter Plugin-Verzeichnisse entfernt.
+
 ## 0.4.4 — 2026-09-12
 
 - Dauerhafte Plugin-ID `io.github.flathack.omabridge`.

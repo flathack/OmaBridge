@@ -27,7 +27,7 @@ virtuellen Desktop im Citrix-Portal starten.
 ## Voraussetzungen
 
 - Omarchy mit der **Quickshell-Bar** und `omarchy plugin` (kein Waybar-Plugin).
-- Python **3.11+**, pip und venv. Installation lädt PySide6 einschließlich Qt WebEngine.
+- Linux x86_64/aarch64 mit Standard-CPython **3.11–3.14**, pip und venv. Installation lädt PySide6 einschließlich Qt WebEngine.
 - Ein laufender, entsperrbarer **Secret Service**, z. B. GNOME Keyring.
 - Für den nativen Modus: Citrix Workspace für Linux mit `wfica` im PATH oder
   `/opt/Citrix/ICAClient/wfica`.
@@ -45,15 +45,27 @@ cd OmaBridge
 ./scripts/install.sh
 ```
 
-Das Skript installiert die App in `~/.local/share/omabridge/venv`, einen Launcher in
+Das Skript installiert die App in einer neuen Umgebung unter `~/.local/share/omabridge/managed/install-*/venv`, einen Launcher in
 `~/.local/bin/omabridge`, einen Desktop-Eintrag und das Plugin `io.github.flathack.omabridge` in
 `~/.config/omarchy/plugins/`. Es sichert eine vorhandene `shell.json`, aktiviert das
-Widget und platziert es rechts in der Bar. Es verändert keine Omarchy-Systemdateien.
+Widget und erhält seine Position (neue Widgets erscheinen rechts). Es verändert keine Omarchy-Systemdateien.
 XDG_CONFIG_HOME und XDG_DATA_HOME werden berücksichtigt.
 
 Eine erneute Ausführung aktualisiert App und Widget. Der Schlüsselbund und die
 gespeicherten Sites bleiben erhalten. `omarchy plugin add` allein installiert die
 Python-App nicht; für die vollständige Installation das Skript verwenden.
+
+Alle heruntergeladenen Build- und Laufzeitpakete werden gegen die gespeicherten
+SHA-256-Hashes geprüft. Vorhandene Dateien müssen dem Installationsnachweis oder
+exakt bekannten OmaBridge-Dateien entsprechen. Bei Symlinks, Hardlinks, unsicheren
+Verzeichnissen oder veränderten/fremden Dateien bricht die Installation ab. Gemeldete
+Konflikte selbst auflösen; es gibt keinen Schalter zum erzwungenen Überschreiben.
+Alte Python-Umgebungen werden weder ausgeführt noch überschrieben und bleiben für
+laufende Sitzungen erhalten. Für ein Update die App schließen und erneut öffnen.
+
+Bei Installationen vor 0.4.4 den alten Bar-Eintrag mit
+`omarchy plugin disable local.omabridge` deaktivieren. Dessen Verzeichnis und die
+alte Umgebung bleiben unberührt. [Details zur Installation](installer-security.md).
 
 ## Sprache
 

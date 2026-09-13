@@ -20,7 +20,7 @@ virtuellen Desktop mit **Citrix Workspace** oder im **integrierten HTML5-Browser
 
 ## Installation
 
-Benötigt werden Omarchys **Quickshell-Bar**, Python 3.11+, pip/venv und ein
+Benötigt werden Omarchys **Quickshell-Bar**, CPython 3.11–3.14, pip/venv und ein
 funktionierender Secret Service wie GNOME Keyring. Native Sitzungen benötigen
 Citrix Workspace (`wfica`), Browser-Sitzungen serverseitig aktiviertes HTML5.
 
@@ -31,7 +31,8 @@ cd OmaBridge
 ```
 
 Der Installer richtet App und Bar-Widget unter deinem Benutzerkonto ein.
-Erneutes Ausführen aktualisiert beides.
+Erneutes Ausführen aktualisiert beides. Abhängigkeiten sind festgelegt und SHA-256-geprüft.
+Nur erkannte, unveränderte OmaBridge-Dateien werden ersetzt; bei Konflikten bricht die Installation ab.
 
 Das Bar-Widget kannst du auch direkt über Omarchy hinzufügen und aktivieren:
 

@@ -32,6 +32,8 @@ jobs:
           sudo apt-get install -y libegl1 libopengl0 libxkbcommon0 libnss3 libasound2t64 libxcb-cursor0
       - name: Install development dependencies
         run: python -m pip install -e '.[dev]' build
+      - name: Verify hash-locked fresh installation
+        run: python -I scripts/check-install.py
       - name: Run tests
         run: python -m pytest -q
       - name: Check shell syntax and whitespace

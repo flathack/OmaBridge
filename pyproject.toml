@@ -1,18 +1,18 @@
 [build-system]
-requires = ["setuptools>=77"]
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "omabridge"
-version = "0.4.4"
+version = "0.4.5"
 description = "Citrix StoreFront launcher for the Omarchy bar"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{name = "FlatHack"}]
 keywords = ["omarchy", "citrix", "storefront", "totp", "quickshell"]
-requires-python = ">=3.11"
-dependencies = ["PySide6>=6.8,<7", "SecretStorage>=3.3,<4"]
+requires-python = ">=3.11,<3.15"
+dependencies = ["PySide6==6.11.2", "SecretStorage==3.5.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]

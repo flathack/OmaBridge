@@ -26,7 +26,7 @@ the Citrix portal.
 ## Requirements
 
 - Omarchy with the **Quickshell bar** and `omarchy plugin` (this is not a Waybar plugin).
-- Python **3.11+**, pip and venv. Installation downloads PySide6, including Qt WebEngine.
+- Linux x86_64/aarch64 with standard CPython **3.11–3.14**, pip and venv. Installation downloads PySide6, including Qt WebEngine.
 - A running **Secret Service** that can be unlocked, such as GNOME Keyring.
 - For native mode: Citrix Workspace for Linux with `wfica` on your PATH or at
   `/opt/Citrix/ICAClient/wfica`.
@@ -44,15 +44,26 @@ cd OmaBridge
 ./scripts/install.sh
 ```
 
-The script installs the app into `~/.local/share/omabridge/venv`, a launcher into
+The script installs the app into a fresh `~/.local/share/omabridge/managed/install-*/venv`, a launcher into
 `~/.local/bin/omabridge`, a desktop entry, and the `io.github.flathack.omabridge` plugin into
 `~/.config/omarchy/plugins/`. It backs up an existing `shell.json`, enables the widget
-and places it on the right side of the bar. It does not modify Omarchy system files.
+and preserves its position (new widgets use the right side). It does not modify Omarchy system files.
 XDG_CONFIG_HOME and XDG_DATA_HOME are respected.
 
 Running the script again updates the app and widget while preserving the keyring
 and saved sites. `omarchy plugin add` alone does not install the Python app;
 use the script for a complete installation.
+
+All downloaded build/runtime wheels use the committed SHA-256 lock. Existing shared
+files must match the ownership receipt or exact known OmaBridge contents. Symlinks,
+hardlinks, unsafe directories and modified/foreign files cause a safe abort. Resolve
+a reported conflict yourself; the installer has no force-overwrite switch. It does
+not execute or overwrite an old virtual environment. Previous environments are kept
+so running sessions can finish. Close and reopen the app to use an update.
+
+For installations older than 0.4.4, disable the old bar entry with
+`omarchy plugin disable local.omabridge`; the new installer leaves that directory
+and the old environment untouched. See [installer security](installer-security.md).
 
 ## Your first connection
 

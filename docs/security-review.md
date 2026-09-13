@@ -153,3 +153,28 @@ source/wheel builds passed. No live customer portal or real credentials were use
 
 The root MIT LICENSE has since been added; the Marketplace's manual review is still outstanding. This
 follow-up documents local fixes and validation, not official maintainer approval.
+
+## 0.4.5 follow-up — Marketplace installer findings
+
+The [Marketplace review](https://github.com/omacom/omarchy-plugin-marketplace/issues/6479#issuecomment-5654270014)
+blocked commit `8aca5a5` because installation could execute future dependency/backend
+versions and overwrite shared user paths without ownership or symlink checks.
+
+Version 0.4.5 uses a complete committed wheel hash lock and an offline local build
+with a pinned backend. The installer creates fresh environments and checks existing
+shared files against ownership receipts or exact known OmaBridge contents. It rejects
+unsafe paths and uses directory-descriptor-based, no-follow inspection and atomic
+writes. The old script that moved legacy plugin directories has been removed.
+See [installer security](installer-security.md) for the trust boundary, recovery
+behavior, dependency update process and regression-test scope.
+
+This addresses the reported implementation issues; Marketplace revalidation and
+maintainer acceptance of the corrected commit are still required.
+
+Local validation on 2026-09-13: 126 tests passed, including 19 installer regressions;
+a complete hash-locked installation succeeded in a disposable home; the Omarchy
+manifest and source/wheel builds passed. The source archive includes the dependency
+lock and installer helpers. Bandit 1.9.4 scanned `src` and `scripts` without scan
+errors or medium/high findings; its 15 low notices concern subprocess use and
+PATH-resolved Omarchy commands. Subprocess arguments are arrays, pip runs against
+locked/offline inputs, and installed OS commands remain part of the trust base.
