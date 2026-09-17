@@ -10,6 +10,7 @@ exec /usr/bin/env -i \
     HOME="$actual_home" \
     PATH=/usr/bin:/bin \
     LANG=C LC_ALL=C \
+    OMARCHY_PATH=/usr/share/omarchy \
     XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$actual_home/.config}" \
     XDG_DATA_HOME="${XDG_DATA_HOME:-$actual_home/.local/share}" \
     XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}" \

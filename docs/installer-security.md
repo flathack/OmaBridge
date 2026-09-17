@@ -11,7 +11,8 @@ through `/usr/bin/env -i` with a minimal environment. `PATH` is fixed to
 executables and invoked by their absolute paths. Only the desktop-session values
 needed to talk to the current Omarchy shell, the XDG destination paths and the
 documented HTTP(S) proxy variables are retained. Python, loader, pip, CA,
-`OMARCHY_PATH`, startup-shell and arbitrary tool variables are removed. The
+arbitrary `OMARCHY_PATH`, startup-shell and tool variables are removed; the
+trusted system installation is supplied as the fixed `/usr/share/omarchy` value. The
 Python installer repeats this allowlist for every child process.
 
 ## Immutable downloaded code

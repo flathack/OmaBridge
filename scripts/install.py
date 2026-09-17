@@ -55,6 +55,7 @@ def secure_environment(apply=True):
         'LANG': 'C',
         'LC_ALL': 'C',
         'PIP_CONFIG_FILE': os.devnull,
+        'OMARCHY_PATH': '/usr/share/omarchy',
         'XDG_CONFIG_HOME': xdg_config,
         'XDG_DATA_HOME': xdg_data,
     }
@@ -206,7 +207,7 @@ def pip_environment():
     # Keep this projection explicit even after secure_environment(): a caller
     # importing install.py directly cannot accidentally pass arbitrary variables
     # into a package/build subprocess.
-    names = {'HOME', 'PATH', 'LANG', 'LC_ALL', 'PIP_CONFIG_FILE',
+    names = {'HOME', 'PATH', 'LANG', 'LC_ALL', 'PIP_CONFIG_FILE', 'OMARCHY_PATH',
              'XDG_CONFIG_HOME', 'XDG_DATA_HOME', *SESSION_ENVIRONMENT}
     env = {name: os.environ[name] for name in names if name in os.environ}
     env['PIP_CONFIG_FILE'] = os.devnull

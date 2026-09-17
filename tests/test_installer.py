@@ -172,8 +172,9 @@ def test_secure_environment_closes_loader_python_and_command_path(monkeypatch):
     assert env['PATH'] == '/usr/bin:/bin'
     assert env['LANG'] == env['LC_ALL'] == 'C'
     assert env['XDG_CONFIG_HOME'] == '/tmp/omabridge-config'
-    for name in ('LD_PRELOAD', 'LD_LIBRARY_PATH', 'PYTHONPATH', 'PYTHONHOME', 'BASH_ENV', 'OMARCHY_PATH'):
+    for name in ('LD_PRELOAD', 'LD_LIBRARY_PATH', 'PYTHONPATH', 'PYTHONHOME', 'BASH_ENV'):
         assert name not in env
+    assert env['OMARCHY_PATH'] == '/usr/share/omarchy'
 
 
 def test_shell_entrypoint_is_isolated_python_with_fixed_interpreter():
