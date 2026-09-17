@@ -159,6 +159,40 @@ def test_pip_configuration_is_not_inherited(monkeypatch):
     assert 'PYTHONPATH' not in env
 
 
+def test_secure_environment_closes_loader_python_and_command_path(monkeypatch):
+    monkeypatch.setenv('LD_PRELOAD', '/tmp/evil.so')
+    monkeypatch.setenv('LD_LIBRARY_PATH', '/tmp/evil')
+    monkeypatch.setenv('PYTHONPATH', '/tmp/evil')
+    monkeypatch.setenv('PYTHONHOME', '/tmp/evil')
+    monkeypatch.setenv('BASH_ENV', '/tmp/evil')
+    monkeypatch.setenv('OMARCHY_PATH', '/tmp/evil')
+    monkeypatch.setenv('PATH', '/tmp/evil')
+    monkeypatch.setenv('XDG_CONFIG_HOME', '/tmp/omabridge-config')
+    env = installer.secure_environment(apply=False)
+    assert env['PATH'] == '/usr/bin:/bin'
+    assert env['LANG'] == env['LC_ALL'] == 'C'
+    assert env['XDG_CONFIG_HOME'] == '/tmp/omabridge-config'
+    for name in ('LD_PRELOAD', 'LD_LIBRARY_PATH', 'PYTHONPATH', 'PYTHONHOME', 'BASH_ENV', 'OMARCHY_PATH'):
+        assert name not in env
+
+
+def test_shell_entrypoint_is_isolated_python_with_fixed_interpreter():
+    first_line = (PROJECT / 'scripts/install.sh').read_text().splitlines()[0]
+    assert first_line == '#!/bin/bash -p'
+    entrypoint = (PROJECT / 'scripts/install.sh').read_text()
+    assert '/usr/bin/env -i' in entrypoint
+    assert '/usr/bin/python3 -I' in entrypoint
+
+
+def test_trusted_command_rejects_untrusted_resolution(monkeypatch, tmp_path):
+    command = tmp_path / 'user-command'
+    command.write_text('#!/bin/sh\n')
+    command.chmod(0o755)
+    monkeypatch.setattr(installer.shutil, 'which', lambda name, path=None: str(command))
+    with pytest.raises(installer.InstallError, match='Unsafe system command'):
+        installer.trusted_command('omarchy')
+
+
 def test_lock_covers_runtime_backend_and_transitive_packages():
     logical = (PROJECT / 'requirements/install.lock').read_text().replace('\\\n', '')
     requirements = {}

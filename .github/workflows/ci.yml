@@ -39,6 +39,7 @@ jobs:
       - name: Check shell syntax and whitespace
         run: |
           bash -n scripts/install.sh scripts/run.sh scripts/check-plugin.sh
+          /usr/bin/python3 -I -m py_compile scripts/install.py scripts/check-install.py
           git show --format= --check HEAD
       - name: Build source archive and wheel
         run: python -m build

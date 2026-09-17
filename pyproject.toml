@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omabridge"
-version = "0.4.5"
+version = "0.4.6"
 description = "Citrix StoreFront launcher for the Omarchy bar"
 readme = "README.md"
 license = "MIT"

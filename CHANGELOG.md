@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.4.6 — 2026-09-17
+
+- Installer-Bootstrap schließt Bash-Startup-Dateien und fremde Umgebungsvariablen vor dem ersten Python-Unterprozess aus.
+- Fester System-Python-Interpreter und absolute, geprüfte Omarchy-Befehle.
+
 ## 0.4.5 — 2026-09-13
 
 - Vollständiger Hash-Lock für Build- und Laufzeitpakete; kein Nachladen beim App-Build.

@@ -4,6 +4,16 @@ The supported entry point is `./scripts/install.sh`. Running it explicitly reque
 installation of the companion app, launcher, desktop entry, icon and bar widget,
 and activation through Omarchy. It does not require root.
 
+The entry point uses `/bin/bash -p`, so Bash startup files and imported shell
+functions cannot run before the installer. It then starts `/usr/bin/python3 -I`
+through `/usr/bin/env -i` with a minimal environment. `PATH` is fixed to
+`/usr/bin:/bin`; Omarchy commands are resolved to root-owned, non-writable
+executables and invoked by their absolute paths. Only the desktop-session values
+needed to talk to the current Omarchy shell, the XDG destination paths and the
+documented HTTP(S) proxy variables are retained. Python, loader, pip, CA,
+`OMARCHY_PATH`, startup-shell and arbitrary tool variables are removed. The
+Python installer repeats this allowlist for every child process.
+
 ## Immutable downloaded code
 
 `requirements/install.lock` pins every runtime and build dependency, including

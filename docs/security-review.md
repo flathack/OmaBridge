@@ -178,3 +178,14 @@ lock and installer helpers. Bandit 1.9.4 scanned `src` and `scripts` without sca
 errors or medium/high findings; its 15 low notices concern subprocess use and
 PATH-resolved Omarchy commands. Subprocess arguments are arrays, pip runs against
 locked/offline inputs, and installed OS commands remain part of the trust base.
+
+## 0.4.5 bootstrap follow-up
+
+The marketplace maintainer additionally required the installer bootstrap to stop
+trusting the caller's interpreter, `PATH` and arbitrary environment variables.
+The `install.sh` entry point now uses Bash privileged mode and `/usr/bin/env -i`
+before starting fixed `/usr/bin/python3 -I`. The child environment is an explicit
+allowlist; loader/Python/pip/CA and `OMARCHY_PATH` overrides are absent. Omarchy
+commands are resolved and checked as root-owned, non-writable files, then invoked
+by absolute path. Tests cover the allowlist and fixed entrypoint, and CI compiles
+and runs the isolated installation path.

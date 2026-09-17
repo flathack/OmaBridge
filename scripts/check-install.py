@@ -7,6 +7,7 @@ project = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('omabridge_installer', project / 'scripts/install.py')
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
+installer.secure_environment()
 
 with tempfile.TemporaryDirectory(prefix='omabridge-install-check-') as temporary:
     home = Path(temporary) / 'home'

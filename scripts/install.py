@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import pwd
 import shlex
 import shutil
 import stat
@@ -20,10 +21,63 @@ import venv
 PLUGIN_ID = 'io.github.flathack.omabridge'
 RECEIPT = 'ownership.json'
 MAX_FILE = 16 * 1024 * 1024
+SYSTEM_PATH = '/usr/bin:/bin'
+BOOTSTRAP_PYTHON = '/usr/bin/python3'
+SESSION_ENVIRONMENT = (
+    'DBUS_SESSION_BUS_ADDRESS', 'DISPLAY', 'HYPRLAND_INSTANCE_SIGNATURE',
+    'WAYLAND_DISPLAY', 'XAUTHORITY', 'XDG_RUNTIME_DIR',
+    # Proxies are the only network customization deliberately retained. TLS
+    # verification and the committed artifact hashes still apply.
+    'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY',
+)
 
 
 class InstallError(Exception):
     pass
+
+
+def _safe_path_value(name, default):
+    value = os.environ.get(name, default)
+    path = Path(value)
+    if not path.is_absolute() or '..' in path.parts:
+        raise InstallError(f'{name} must be an absolute path without traversal')
+    return str(path)
+
+
+def secure_environment(apply=True):
+    """Replace the inherited environment before any child process is started."""
+    home = pwd.getpwuid(os.getuid()).pw_dir
+    xdg_config = _safe_path_value('XDG_CONFIG_HOME', str(Path(home) / '.config'))
+    xdg_data = _safe_path_value('XDG_DATA_HOME', str(Path(home) / '.local/share'))
+    clean = {
+        'HOME': home,
+        'PATH': SYSTEM_PATH,
+        'LANG': 'C',
+        'LC_ALL': 'C',
+        'PIP_CONFIG_FILE': os.devnull,
+        'XDG_CONFIG_HOME': xdg_config,
+        'XDG_DATA_HOME': xdg_data,
+    }
+    for name in SESSION_ENVIRONMENT:
+        value = os.environ.get(name)
+        if value:
+            clean[name] = value
+    if apply:
+        os.environ.clear()
+        os.environ.update(clean)
+    return clean
+
+
+def trusted_command(name):
+    """Resolve a system command after PATH has been replaced by SYSTEM_PATH."""
+    path = shutil.which(name, path=SYSTEM_PATH)
+    if not path:
+        raise InstallError(f'Required system command not found: {name}')
+    resolved = Path(path).resolve(strict=True)
+    info = resolved.stat()
+    if not resolved.is_file() or info.st_uid != 0 or info.st_mode & 0o022:
+        raise InstallError(f'Unsafe system command: {resolved}')
+    return str(resolved)
 
 
 def digest(data):
@@ -149,8 +203,12 @@ def save_receipt(directory, payload):
 
 
 def pip_environment():
-    env = {k: v for k, v in os.environ.items() if not k.startswith(('PIP_', 'PYTHON'))}
-    # Suppress global/user pip configuration as well as environment overrides.
+    # Keep this projection explicit even after secure_environment(): a caller
+    # importing install.py directly cannot accidentally pass arbitrary variables
+    # into a package/build subprocess.
+    names = {'HOME', 'PATH', 'LANG', 'LC_ALL', 'PIP_CONFIG_FILE',
+             'XDG_CONFIG_HOME', 'XDG_DATA_HOME', *SESSION_ENVIRONMENT}
+    env = {name: os.environ[name] for name in names if name in os.environ}
     env['PIP_CONFIG_FILE'] = os.devnull
     return env
 
@@ -190,7 +248,8 @@ def build_environment(generation, project):
     return python
 
 
-def install(project, home, data, config, builder=build_environment, activate=True):
+def install(project, home, data, config, builder=build_environment, activate=True,
+            omarchy=None, omarchy_shell=None):
     home, data, config = map(absolute, (home, data, config))
     managed_path = data / 'omabridge/managed'
     launcher = home / '.local/bin/omabridge'
@@ -255,13 +314,17 @@ def install(project, home, data, config, builder=build_environment, activate=Tru
             payload['files'][str(directory.path / name)] = [digest(content)]
         save_receipt(managed, payload)
         if activate:
+            omarchy = omarchy or trusted_command('omarchy')
+            omarchy_shell = omarchy_shell or trusted_command('omarchy-shell')
             # Keep a private recovery copy before requesting the bar change.
             if shell_config is not None:
                 managed.write('shell-backup-' + uuid.uuid4().hex + '.json', shell_config[2], None, mode=0o600)
             shell_directory.read('shell.json')
-            subprocess.run(['omarchy-shell', 'shell', 'rescanPlugins'], check=True)
+            subprocess.run([omarchy_shell, 'shell', 'rescanPlugins'], check=True,
+                           env=pip_environment())
             for attempt in range(25):
-                result = subprocess.run(['omarchy', 'plugin', 'enable', PLUGIN_ID], capture_output=True, text=True)
+                result = subprocess.run([omarchy, 'plugin', 'enable', PLUGIN_ID],
+                                        capture_output=True, text=True, env=pip_environment())
                 if result.returncode == 0:
                     print(result.stdout.strip())
                     break
@@ -272,23 +335,25 @@ def install(project, home, data, config, builder=build_environment, activate=Tru
 
 
 def main():
+    secure_environment()
     if (sys.platform != 'linux' or platform.python_implementation() != 'CPython'
             or not (3, 11) <= sys.version_info[:2] <= (3, 14)
             or platform.machine() not in ('x86_64', 'aarch64') or sysconfig.get_config_var('Py_GIL_DISABLED')):
         raise InstallError('Requires Linux x86_64/aarch64 and CPython 3.11–3.14 (standard GIL build).')
     if os.getuid() == 0:
         raise InstallError('Run the installer as your desktop user, not root.')
-    if not shutil.which('omarchy') or not shutil.which('omarchy-shell'):
-        raise InstallError('The Omarchy Shell is required.')
+    omarchy = trusted_command('omarchy')
+    omarchy_shell = trusted_command('omarchy-shell')
     os.umask(0o077)
     project = Path(__file__).resolve().parents[1]
     with tempfile.TemporaryDirectory(prefix='omabridge-validate-') as temporary:
         for name in ['manifest.json', 'BarWidget.qml']:
             shutil.copyfile(project / name, Path(temporary) / name)
-        subprocess.run(['omarchy', 'plugin', 'validate', temporary], check=True)
+        subprocess.run([omarchy, 'plugin', 'validate', temporary], check=True, env=pip_environment())
     home = Path.home()
     install(project, home, Path(os.environ.get('XDG_DATA_HOME', home / '.local/share')),
-            Path(os.environ.get('XDG_CONFIG_HOME', home / '.config')))
+            Path(os.environ.get('XDG_CONFIG_HOME', home / '.config')),
+            omarchy=omarchy, omarchy_shell=omarchy_shell)
 
 
 if __name__ == '__main__':
