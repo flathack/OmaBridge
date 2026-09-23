@@ -11,8 +11,15 @@ import pytest
 @pytest.mark.skipif(not shutil.which('quickshell') or not Path('/usr/share/omarchy/shell/Ui').exists(),
                     reason='Requires the installed Omarchy UI kit and Quickshell')
 def test_polling_does_not_change_popup_layout_or_erase_input(tmp_path):
-    for name in ['Ui', 'Commons']:
-        (tmp_path / name).symlink_to(Path('/usr/share/omarchy/shell') / name, target_is_directory=True)
+    (tmp_path / 'Commons').symlink_to(Path('/usr/share/omarchy/shell/Commons'), target_is_directory=True)
+    ui = tmp_path / 'Ui'
+    ui.mkdir()
+    for source in Path('/usr/share/omarchy/shell/Ui').iterdir():
+        if source.name != 'KeyboardPanel.qml':
+            (ui / source.name).symlink_to(source)
+    # Offscreen Qt has no layer-shell backend. Preserve the content/layout check
+    # with PopupCard while the real KeyboardPanel is checked on Wayland below.
+    (ui / 'KeyboardPanel.qml').write_text('import QtQuick\nPopupCard { property Item focusTarget: null }\n')
     launcher = tmp_path / 'state'
     launcher.write_text('#!' + sys.executable + '\nimport json,time\ntime.sleep(.2)\nprint(json.dumps({"language":"en","locked":True,"sites":[]}))\n')
     launcher.chmod(0o700)
@@ -65,3 +72,53 @@ ShellRoot {
                             text=True, timeout=10)
     output = result.stdout + result.stderr
     assert result.returncode == 0 and 'POLLING_STABLE' in output, output
+
+
+@pytest.mark.skipif(not shutil.which('quickshell') or not os.environ.get('WAYLAND_DISPLAY'),
+                    reason='Requires a running Wayland compositor and Quickshell')
+def test_pin_field_receives_keyboard_focus_when_panel_opens(tmp_path):
+    for name in ['Ui', 'Commons']:
+        (tmp_path / name).symlink_to(Path('/usr/share/omarchy/shell') / name, target_is_directory=True)
+    code = Path('BarWidget.qml').read_text().replace(
+        'readonly property string launcher: Quickshell.env("HOME") + "/.local/bin/omabridge"',
+        'readonly property string launcher: "/usr/bin/false"')
+    code = code.replace('    id: root', '    id: root\n    property alias testInput: passwordInput', 1)
+    (tmp_path / 'BarWidget.qml').write_text(code)
+    (tmp_path / 'shell.qml').write_text('''import QtQuick
+import Quickshell
+ShellRoot {
+    QtObject {
+        id: fakeBar
+        property string position: "top"
+        property int barSize: 30
+        property bool vertical: false
+        property string foreground: "white"
+        property string barForeground: "white"
+        property string fontFamily: "monospace"
+        property var activePopout: null
+        function requestPopout(key) { activePopout = key }
+        function releasePopout(key) { activePopout = null }
+    }
+    PanelWindow {
+        anchors { top: true; left: true; right: true }
+        implicitHeight: 30
+        BarWidget { id: widget; bar: fakeBar }
+        Timer {
+            interval: 250; running: true
+            onTriggered: { widget.locked = true; widget.popupOpen = true }
+        }
+        Timer {
+            interval: 1200; running: true
+            onTriggered: {
+                console.log(widget.testInput.activeFocus ? "PIN_FOCUSED" : "PIN_NOT_FOCUSED")
+                Qt.quit()
+            }
+        }
+    }
+}
+''')
+    result = subprocess.run(['quickshell', '--path', str(tmp_path / 'shell.qml'), '--no-color'],
+                            env={**os.environ, 'QT_QPA_PLATFORM': 'wayland'}, capture_output=True,
+                            text=True, timeout=6)
+    output = result.stdout + result.stderr
+    assert result.returncode == 0 and 'PIN_FOCUSED' in output, output

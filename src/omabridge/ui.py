@@ -8,7 +8,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Qt, Signal
-from PySide6.QtGui import QAction, QActionGroup, QIcon, QKeySequence
+from PySide6.QtGui import QAction, QActionGroup, QFont, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
@@ -24,14 +24,14 @@ from .storage import SecretVault, SiteStore
 from .totp import Totp
 
 STYLE = """
-QWidget { background: #151f2c; color: #dce7f5; font-size: 14px; }
+QWidget { background: #151f2c; color: #dce7f5; font-family: monospace; font-size: 13px; }
 QLabel { background: transparent; }
 QLabel#brand { font-size: 26px; font-weight: 700; letter-spacing: 1px; }
 QLabel#title { font-size: 24px; font-weight: 600; }
 QLabel#muted { color: #9bafc5; }
 QLabel#status { color: #b6cee8; padding: 10px 16px; background: #1d2b3b; }
 QLabel#emptyTitle { font-size: 30px; font-weight: 600; }
-QLabel#connectionMark { color: #8fb9e8; font-family: monospace; font-size: 52px; }
+QLabel#connectionMark { color: #8fb9e8; font-size: 52px; }
 QPushButton { background: #26384d; border: 1px solid #3c516a; border-radius: 6px; padding: 9px 14px; }
 QPushButton:hover { background: #344b65; }
 QPushButton:focus { border: 2px solid #8fb9e8; }
@@ -230,7 +230,7 @@ class StatusNotice(QToolButton):
         self.setFixedSize(30, 30)
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         self.setStyleSheet("QToolButton:enabled { color: #dce7f5; }")
-        super().setText("ⓘ")
+        super().setText("󰋽")
         self.setAccessibleName(tr("Connection status and portal address"))
         self.clicked.connect(self.show_details)
         self.refresh_tooltip()
@@ -361,6 +361,7 @@ class MainWindow(QMainWindow):
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.resize(1320, 870)
         self.setMinimumSize(640, 400)
+        self.setFont(QFont("monospace"))
         self.setStyleSheet(STYLE.replace("@ASSET_ROOT@", str(Path(__file__).parent / "assets")))
         root = QWidget()
         layout = QVBoxLayout(root)
@@ -372,9 +373,9 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout(self.toolbar)
         row.setContentsMargins(6, 3, 6, 3)
         row.setSpacing(3)
-        self.back_button = self.nav_button("←", tr("Back (Alt+Left)"), lambda: self.navigate("back"))
-        self.forward_button = self.nav_button("→", tr("Forward (Alt+Right)"), lambda: self.navigate("forward"))
-        self.reload_button = self.nav_button("↻", tr("Reload (Ctrl+R)"), lambda: self.navigate("reload"))
+        self.back_button = self.nav_button("󰁍", tr("Back (Alt+Left)"), lambda: self.navigate("back"))
+        self.forward_button = self.nav_button("󰁔", tr("Forward (Alt+Right)"), lambda: self.navigate("forward"))
+        self.reload_button = self.nav_button("󰑐", tr("Reload (Ctrl+R)"), lambda: self.navigate("reload"))
         for control in (self.back_button, self.forward_button, self.reload_button):
             row.addWidget(control)
         self.tabs = QTabBar()
@@ -389,11 +390,11 @@ class MainWindow(QMainWindow):
         self.tabs.tabBarClicked.connect(lambda _: self.connect_site())
         self.tabs.tabCloseRequested.connect(self.close_tab)
         row.addWidget(self.tabs, 1)
-        self.add_button = self.nav_button("+", tr("Add site (Ctrl+T)"), self.add_site)
+        self.add_button = self.nav_button("󰐕", tr("Add site (Ctrl+T)"), self.add_site)
         row.addWidget(self.add_button)
         self.status = StatusNotice()
         row.addWidget(self.status)
-        self.menu_button = self.nav_button("⋮", tr("OmaBridge menu"), lambda: None)
+        self.menu_button = self.nav_button("󰇙", tr("OmaBridge menu"), lambda: None)
         self.menu_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.menu = QMenu(self)
         self.menu_button.setMenu(self.menu)
@@ -468,7 +469,7 @@ class MainWindow(QMainWindow):
 
     def add_tab_close(self, index):
         control = QToolButton(self.tabs)
-        control.setText("×")
+        control.setText("󰅖")
         control.setAccessibleName(tr("Close tab"))
         control.setFixedSize(18, 22)
         control.clicked.connect(lambda: self.close_tab(next((i for i in range(self.tabs.count())

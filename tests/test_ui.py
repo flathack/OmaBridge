@@ -193,9 +193,12 @@ def test_html5_popup_is_a_tab_with_same_profile_and_cleanup(app, tab_window):
 
 def test_menu_status_does_not_cover_portal(app, tab_window):
     window = tab_window
+    assert window.font().family() == "monospace"
+    assert [control.text() for control in (window.back_button, window.forward_button,
+            window.reload_button, window.add_button, window.menu_button)] == ["󰁍", "󰁔", "󰑐", "󰐕", "󰇙"]
     window.show_session_message(window.sites[0].id, "Warte auf TOTP …")
     assert "Warte auf TOTP" in window.status.toolTip()
-    assert window.status.text() == "ⓘ"
+    assert window.status.text() == "󰋽"
     window.change_mode("browser")
     assert window.store.load()[0].mode == "browser"
     assert window.mode_actions["browser"].isChecked()

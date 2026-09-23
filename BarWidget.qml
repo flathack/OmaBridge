@@ -145,12 +145,13 @@ Ui.BarWidget {
                 root.unlockError = root.t("Unlock failed. Reopen OmaBridge and try again.", "Entsperren fehlgeschlagen. OmaBridge neu öffnen und erneut versuchen.")
         }
     }
-    Ui.PopupCard {
+    Ui.KeyboardPanel {
         id: popup
         anchorItem: root
         bar: root.bar
         owner: root
         open: root.popupOpen
+        focusTarget: root.locked ? passwordInput : null
         contentWidth: popup.fittedContentWidth(Style.space(320))
         contentHeight: popup.fittedContentHeight(column.implicitHeight)
 
