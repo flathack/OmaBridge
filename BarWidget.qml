@@ -26,6 +26,7 @@ Ui.BarWidget {
         unlockError = ""
         sites = []
         if (popupOpen) {
+            if (bar) bar.hideTooltip(root)
             refreshSites()
             focusPasswordInput()
         }
@@ -88,14 +89,11 @@ Ui.BarWidget {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: function(mouse) {
             if (mouse.button === Qt.RightButton) root.launch("")
-            else {
-                root.popupOpen = !root.popupOpen
-                if (root.popupOpen) root.refreshSites()
-            }
+            else root.popupOpen = !root.popupOpen
         }
         onEntered: {
             root.refreshSites()
-            if (root.bar) root.bar.showTooltip(root, root.t("OmaBridge · Citrix sites\nRight-click: Manage sites", "OmaBridge · Citrix-Sites\nRechtsklick: Site-Verwaltung"))
+            if (root.bar && !root.popupOpen) root.bar.showTooltip(root, root.t("OmaBridge · Citrix sites\nRight-click: Manage sites", "OmaBridge · Citrix-Sites\nRechtsklick: Site-Verwaltung"))
         }
         onExited: if (root.bar) root.bar.hideTooltip(root)
     }
@@ -233,25 +231,53 @@ Ui.BarWidget {
                             Keys.onSpacePressed: root.launch(modelData.id)
                             border.width: activeFocus ? 1 : 0
                             border.color: root.bar ? root.bar.foreground : "white"
-                            Column {
+                            Row {
                                 anchors.fill: parent
                                 anchors.margins: Style.space(8)
-                                spacing: Style.space(4)
-                                Text {
-                                    width: parent.width
-                                    text: siteRow.modelData.name
-                                    textFormat: Text.PlainText
-                                    elide: Text.ElideRight
-                                    color: root.bar ? root.bar.foreground : "white"
-                                    font.family: root.bar ? root.bar.fontFamily : "monospace"
-                                    font.pixelSize: Style.font.body
+                                spacing: Style.space(8)
+                                Item {
+                                    id: iconSlot
+                                    width: Style.space(20)
+                                    height: parent.height
+                                    Image {
+                                        id: siteIcon
+                                        anchors.centerIn: parent
+                                        width: Style.space(18)
+                                        height: Style.space(18)
+                                        sourceSize: Qt.size(36, 36)
+                                        fillMode: Image.PreserveAspectFit
+                                        source: siteRow.modelData.icon || ""
+                                        cache: false
+                                    }
+                                    Text {
+                                        anchors.centerIn: parent
+                                        visible: siteIcon.status !== Image.Ready
+                                        text: "󰢹"
+                                        color: root.bar ? root.bar.foreground : "white"
+                                        font.family: root.bar ? root.bar.fontFamily : "monospace"
+                                        font.pixelSize: Style.font.subtitle
+                                    }
                                 }
-                                Text {
-                                    text: siteRow.modelData.mode === "browser" ? "Browser · HTML5" : "Citrix Workspace"
-                                    color: root.bar ? root.bar.foreground : "white"
-                                    opacity: 0.7
-                                    font.family: root.bar ? root.bar.fontFamily : "monospace"
-                                    font.pixelSize: Style.font.caption
+                                Column {
+                                    width: parent.width - iconSlot.width - parent.spacing
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: Style.space(4)
+                                    Text {
+                                        width: parent.width
+                                        text: siteRow.modelData.name
+                                        textFormat: Text.PlainText
+                                        elide: Text.ElideRight
+                                        color: root.bar ? root.bar.foreground : "white"
+                                        font.family: root.bar ? root.bar.fontFamily : "monospace"
+                                        font.pixelSize: Style.font.body
+                                    }
+                                    Text {
+                                        text: siteRow.modelData.mode === "browser" ? "Browser · HTML5" : "Citrix Workspace"
+                                        color: root.bar ? root.bar.foreground : "white"
+                                        opacity: 0.7
+                                        font.family: root.bar ? root.bar.fontFamily : "monospace"
+                                        font.pixelSize: Style.font.caption
+                                    }
                                 }
                             }
                             MouseArea {

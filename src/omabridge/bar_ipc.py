@@ -24,10 +24,19 @@ def launcher_name():
     return endpoint('launcher')
 
 
+def site_summary(site, favicons=None):
+    summary = {'id': site.id, 'name': site.name, 'mode': site.mode}
+    if favicons:
+        icon = favicons.url(site.id)
+        if icon:
+            summary['icon'] = icon
+    return summary
+
+
 def window_state(window):
     return {'language': language(), 'locked': window.locked,
             'sites': [] if window.locked else [
-                {'id': site.id, 'name': site.name, 'mode': site.mode} for site in window.sites]}
+                site_summary(site, window.favicons) for site in window.sites]}
 
 
 def start_server(window):

@@ -96,8 +96,10 @@ ShellRoot {
         property string barForeground: "white"
         property string fontFamily: "monospace"
         property var activePopout: null
+        property bool tooltipVisible: true
         function requestPopout(key) { activePopout = key }
         function releasePopout(key) { activePopout = null }
+        function hideTooltip(target) { tooltipVisible = false }
     }
     PanelWindow {
         anchors { top: true; left: true; right: true }
@@ -110,7 +112,7 @@ ShellRoot {
         Timer {
             interval: 1200; running: true
             onTriggered: {
-                console.log(widget.testInput.activeFocus ? "PIN_FOCUSED" : "PIN_NOT_FOCUSED")
+                console.log(widget.testInput.activeFocus && !fakeBar.tooltipVisible ? "PIN_FOCUSED" : "PIN_NOT_FOCUSED")
                 Qt.quit()
             }
         }

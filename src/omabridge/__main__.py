@@ -40,7 +40,11 @@ def main():
                     print(json.dumps(state, ensure_ascii=False))
                     return 0
             locked = bool(AppLockStore().load())
-            sites = [] if locked else [{"id": s.id, "name": s.name, "mode": s.mode} for s in SiteStore().load()]
+            from .bar_ipc import site_summary
+            from .favicons import FaviconStore
+            store = SiteStore()
+            icons = FaviconStore(store.directory) if args.bar_state else None
+            sites = [] if locked else [site_summary(site, icons) for site in store.load()]
             print(json.dumps({"language": language(), "locked": locked, "sites": sites} if args.bar_state else sites, ensure_ascii=False))
         except (ValueError, OSError) as error:
             print(str(error), file=sys.stderr)

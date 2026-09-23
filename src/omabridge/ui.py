@@ -7,8 +7,9 @@ from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Qt, Signal
-from PySide6.QtGui import QAction, QActionGroup, QFont, QIcon, QKeySequence
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Qt, Signal, QSize, QUrl
+from PySide6.QtGui import QAction, QActionGroup, QFont, QIcon, QKeySequence, QPixmap
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from .browser import PortalPage, PortalSession, display_address
+from .favicons import FaviconStore
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from .launcher import workspace_executable
 from .models import Credentials, Site, origin
@@ -350,6 +352,9 @@ class MainWindow(QMainWindow):
         self.session_generation = 0
         self.vault = vault or SecretVault()
         self.sites = [] if self.locked else self.store.load()
+        self.favicons = FaviconStore(self.store.directory)
+        self.favicon_network = QNetworkAccessManager(self)
+        self.favicon_attempted = set()
         self.sessions = {}
         self.popup_tabs = {}
         self.hidden_sites = set()
@@ -379,6 +384,7 @@ class MainWindow(QMainWindow):
         for control in (self.back_button, self.forward_button, self.reload_button):
             row.addWidget(control)
         self.tabs = QTabBar()
+        self.tabs.setIconSize(QSize(16, 16))
         self.tabs.setAccessibleName(tr("Citrix sites and sessions"))
         self.tabs.setExpanding(False)
         self.tabs.setMovable(False)
@@ -456,6 +462,7 @@ class MainWindow(QMainWindow):
         self.theme = ThemeWatcher(self)
         self.theme.changed.connect(self.apply_theme)
         self.theme.refresh()
+        QTimer.singleShot(0, self.fetch_favicons)
         if self.locked:
             self.unlock_secret.setFocus()
 
@@ -466,6 +473,57 @@ class MainWindow(QMainWindow):
         # Explicit local foreground keeps text-only navigation glyphs visible in Qt.
         for control in self.findChildren(QToolButton):
             control.setStyleSheet("QToolButton:enabled { color: " + colors['foreground'] + "; }")
+
+    def fetch_favicons(self):
+        if self.locked:
+            return
+        for site in self.sites:
+            if site.id in self.favicon_attempted or not self.favicons.icon(site.id).isNull():
+                continue
+            self.favicon_attempted.add(site.id)
+            request = QNetworkRequest(QUrl(origin(site.url) + '/favicon.ico'))
+            request.setTransferTimeout(5000)
+            request.setAttribute(QNetworkRequest.Attribute.RedirectPolicyAttribute,
+                                 QNetworkRequest.RedirectPolicy.ManualRedirectPolicy)
+            reply = self.favicon_network.get(request)
+            reply.readyRead.connect(lambda reply=reply: reply.abort() if reply.bytesAvailable() > 262144 else None)
+            reply.finished.connect(lambda reply=reply, site_id=site.id: self.favicon_fetched(site_id, reply))
+
+    def favicon_fetched(self, site_id, reply):
+        try:
+            if (reply.error() != QNetworkReply.NetworkError.NoError or self.locked
+                    or not any(site.id == site_id for site in self.sites)
+                    or reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute) != 200):
+                return
+            data = bytes(reply.readAll())
+            if len(data) > 262144:
+                return
+            pixmap = QPixmap()
+            if pixmap.loadFromData(data) and self.favicons.save(site_id, QIcon(pixmap)):
+                self.update_favicon(site_id)
+        except OSError:
+            pass  # An icon is optional; the site itself remains usable.
+        finally:
+            reply.deleteLater()
+
+    def save_portal_favicon(self, site_id, view, icon):
+        if self.locked or icon.isNull():
+            return
+        site = next((site for site in self.sites if site.id == site_id), None)
+        if not site:
+            return
+        try:
+            if origin(view.url().toString()) == origin(site.url) and self.favicons.save(site_id, icon):
+                self.update_favicon(site_id)
+        except (ValueError, OSError):
+            pass
+
+    def update_favicon(self, site_id):
+        icon = self.favicons.icon(site_id)
+        for index in range(self.tabs.count()):
+            key = self.tabs.tabData(index)
+            if key == site_id or key in self.popup_tabs and self.popup_tabs[key][0] == site_id:
+                self.tabs.setTabIcon(index, icon)
 
     def add_tab_close(self, index):
         control = QToolButton(self.tabs)
@@ -538,6 +596,8 @@ class MainWindow(QMainWindow):
             self.locked = False
             self.pages.setCurrentIndex(0)
             self.refresh()
+            self.favicon_attempted.clear()
+            self.fetch_favicons()
             report()
             pending, self.pending_site_id = self.pending_site_id, None
             if pending:
@@ -717,6 +777,7 @@ class MainWindow(QMainWindow):
             if site.id in self.hidden_sites:
                 continue
             index = self.tabs.addTab(site.name)
+            self.tabs.setTabIcon(index, self.favicons.icon(site.id))
             self.add_tab_close(index)
             self.tabs.setTabData(index, site.id)
             self.tabs.setTabToolTip(index, site.url)
@@ -724,6 +785,7 @@ class MainWindow(QMainWindow):
                 selected = index
         for token, (owner, view) in self.popup_tabs.items():
             index = self.tabs.addTab(view.title() or tr("Citrix session"))
+            self.tabs.setTabIcon(index, self.favicons.icon(owner))
             self.add_tab_close(index)
             self.tabs.setTabData(index, token)
             if key == token:
@@ -750,6 +812,7 @@ class MainWindow(QMainWindow):
         self.sites_menu.clear()
         for site in self.sites:
             action = self.sites_menu.addAction(site.name)
+            action.setIcon(self.favicons.icon(site.id))
             action.triggered.connect(lambda checked=False, site_id=site.id: self.open_site_id(site_id))
         if not self.sites:
             self.sites_menu.addAction(tr("No saved sites yet")).setEnabled(False)
@@ -791,11 +854,13 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(view)
         self.tabs.blockSignals(True)
         index = self.tabs.addTab(tr("Citrix session"))
+        self.tabs.setTabIcon(index, self.favicons.icon(session.site.id))
         self.add_tab_close(index)
         self.tabs.setTabData(index, token)
         self.tabs.setCurrentIndex(index)
         self.tabs.blockSignals(False)
         view.titleChanged.connect(lambda title: self.popup_title(token, title))
+        view.iconChanged.connect(lambda icon: self.save_portal_favicon(session.site.id, view, icon))
         view.urlChanged.connect(lambda _: self.view_changed(view))
         view.loadFinished.connect(lambda _: self.view_changed(view))
         self.selected(index)
@@ -893,7 +958,11 @@ class MainWindow(QMainWindow):
                 return
             self.remove_session(updated.id)
             self.sites = new_sites
+            if site and site.url != updated.url:
+                self.favicons.remove(site.id)
+                self.favicon_attempted.discard(site.id)
             self.refresh(updated.id)
+            self.fetch_favicons()
             self.status.setText(tr("Site saved. Click its tab to open it."))
         self.status.setText(tr("Saving to the keyring …"))
         self.run_job(save, done)
@@ -929,6 +998,7 @@ class MainWindow(QMainWindow):
                 return
             self.remove_session(site.id)
             self.sites = new_sites
+            self.favicons.remove(site.id)
             self.refresh()
             self.status.setText(tr("Site and credentials removed."))
         self.run_job(remove, done)
@@ -982,6 +1052,7 @@ class MainWindow(QMainWindow):
             session.popup_closer = self.close_popup
             session.message.connect(lambda text: self.show_session_message(site.id, text))
             session.view.urlChanged.connect(lambda _: self.view_changed(session.view))
+            session.view.iconChanged.connect(lambda icon: self.save_portal_favicon(site.id, session.view, icon))
             session.view.loadFinished.connect(lambda _: self.view_changed(session.view))
             self.stack.addWidget(session)
             self.stack.setCurrentWidget(session)
