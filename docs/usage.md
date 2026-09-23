@@ -16,8 +16,10 @@ the Citrix portal.
 - Store usernames, passwords and TOTP secrets in the Linux keyring (Secret Service).
 - Automatic sign-in for recognized StoreFront forms, including multiple steps.
 - Choose **Citrix Workspace** or **Browser / HTML5 inside OmaBridge** for each site.
-- Each site has its own browser session that is not persisted to disk. HTML5 popups
-  open in additional tabs sharing that session. Open sites stay connected when switching tabs.
+- Each site has its own persistent browser profile. Cookies, portal settings and cache
+  are stored privately under `~/.config/omabridge/browser/<site ID>/`. HTML5 popups
+  open in additional tabs sharing that profile. Open sites stay connected when switching tabs.
+  Removing a site or changing its portal origin deletes that profile.
 - A single 42-pixel top bar with navigation, tabs, add, info and menu controls.
   The portal and VM fill the remaining space, without a sidebar, inner margins or status bar.
 - Configure form fields and client selection for customized portals using CSS selectors.
@@ -28,8 +30,9 @@ the Citrix portal.
 - Omarchy with the **Quickshell bar** and `omarchy plugin` (this is not a Waybar plugin).
 - Linux x86_64/aarch64 with standard CPython **3.11–3.14**, pip and venv. Installation downloads PySide6, including Qt WebEngine.
 - A running **Secret Service** that can be unlocked, such as GNOME Keyring.
-- For native mode: Citrix Workspace for Linux with `wfica` on your PATH or at
-  `/opt/Citrix/ICAClient/wfica`.
+- For native mode: Citrix Workspace for Linux with `wfica` on your PATH or
+  installed under `/opt/Citrix/ICAClient/`. OmaBridge prefers the bundled
+  `wfica.sh`, which sets `ICAROOT` and opens ICA files with `-file`.
 - For HTML5: a StoreFront portal with the browser client enabled on the server and
   an appropriate HDX/WebSocket configuration.
 - Valid HTTPS certificates and a correctly synchronized system clock for TOTP.
@@ -71,6 +74,12 @@ English is the default UI language. Switch under **⋮ → Settings → Language
 The choice is saved in `~/.config/omabridge/settings.json` and applies immediately
 to the app; the bar picks it up when opened again. Existing sessions stay open.
 Portal content uses its own language settings.
+
+Under **⋮ → Settings → Appearance**, choose between your current Omarchy colors
+and **Odysseus Midnight**. Midnight uses Odysseus's dark palette with subtle white
+animated rain on OmaBridge's home and lock screens. **Odysseus Midnight (still)**
+keeps the colors without motion. The choice applies immediately
+and is saved in `settings.json`. Citrix portals and HTML5 sessions keep their own design.
 
 1. Click **Citrix → Manage sites** in the bar, then **+** at the top of OmaBridge.
 2. Enter a name and the full **Receiver for Web URL**, for example
@@ -194,9 +203,13 @@ select HTML5 in the portal.
   separated by a security boundary.
 - Automation runs in an isolated JavaScript context. Portal fields receive the
   values needed to sign in; the TOTP secret itself is never injected into the portal.
-- ICA downloads are accepted only from the saved portal origin, validated and saved
-  under random filenames in a private temporary directory. Workspace receives only
-  the file path as an argument, not shell commands. `RemoveICAFile=yes`, process exit,
+- ICA downloads from the saved portal origin are accepted directly. For a different
+  HTTPS host, OmaBridge shows its exact address and asks whether to allow it for
+  this site. Approved origins are stored in `sites.json` and reset if the portal
+  origin changes. Other addresses remain blocked. Portal-created `blob:` and `data:`
+  downloads are checked as well. ICA files are saved under random filenames in a
+  private temporary directory. Workspace receives only
+  the file path through its `-file` interface, not shell commands. `RemoveICAFile=yes`, process exit,
   a five-minute timeout and app shutdown provide ticket cleanup.
 - The Chromium sandbox and certificate validation remain enabled. Portal console
   logs are suppressed. OmaBridge has no telemetry or remote data storage.

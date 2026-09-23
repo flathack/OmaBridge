@@ -16,9 +16,11 @@ virtuellen Desktop im Citrix-Portal starten.
 - Benutzername, Passwort und TOTP-Schlüssel im Linux-Schlüsselbund (Secret Service).
 - Automatische Anmeldung für erkannte StoreFront-Formulare, auch in mehreren Schritten.
 - Pro Site **Citrix Workspace** oder **Browser / HTML5 in OmaBridge** auswählen.
-- Eigene, nicht auf Datenträger gespeicherte Browser-Sitzung je Site; HTML5-Popups
-  öffnen als zusätzliche Tabs und verwenden dieselbe Sitzung. Bereits geöffnete
+- Eigenes dauerhaftes Browserprofil je Site; Cookies, lokale Portal-Einstellungen
+  und Cache liegen privat unter `~/.config/omabridge/browser/<Site-ID>/`. HTML5-Popups
+  öffnen als zusätzliche Tabs und verwenden dasselbe Profil. Bereits geöffnete
   Sites bleiben beim Wechsel erhalten.
+  Beim Entfernen einer Site oder beim Wechsel ihrer Portal-Domain wird das Profil gelöscht.
 - Nur eine 42 Pixel hohe obere Leiste: Navigation, Tabs, Hinzufügen, Info und Menü.
   Portal und VM nutzen die gesamte übrige Fläche, ohne Seitenleiste, Innenränder oder Statusleiste.
 - Formularfelder und Client-Auswahl bei angepassten Portalen über CSS-Selektoren konfigurieren.
@@ -30,7 +32,8 @@ virtuellen Desktop im Citrix-Portal starten.
 - Linux x86_64/aarch64 mit Standard-CPython **3.11–3.14**, pip und venv. Installation lädt PySide6 einschließlich Qt WebEngine.
 - Ein laufender, entsperrbarer **Secret Service**, z. B. GNOME Keyring.
 - Für den nativen Modus: Citrix Workspace für Linux mit `wfica` im PATH oder
-  `/opt/Citrix/ICAClient/wfica`.
+  unter `/opt/Citrix/ICAClient/`. OmaBridge verwendet nach Möglichkeit die
+  mitgelieferte `wfica.sh`, die `ICAROOT` setzt und die ICA-Datei mit `-file` öffnet.
 - Für HTML5: ein StoreFront-Portal mit serverseitig aktiviertem Browser-Client und
   passender HDX-/WebSocket-Konfiguration.
 - Gültige HTTPS-Zertifikate und eine korrekt synchronisierte Systemzeit für TOTP.
@@ -73,6 +76,15 @@ Standard ist Englisch. Unter **⋮ → Settings → Language → Deutsch** stell
 die App auf Deutsch. Die Auswahl steht in `~/.config/omabridge/settings.json`
 und gilt sofort; das Bar-Menü übernimmt sie beim nächsten Öffnen. Bestehende
 Sitzungen bleiben erhalten. Die Sprache des Citrix-Portals wird dort eingestellt.
+
+## Darstellung
+
+Unter **⋮ → Einstellungen → Darstellung** kannst du zwischen den aktuellen
+Omarchy-Farben und **Odysseus Midnight** wählen. Midnight verwendet die dunkle
+Odysseus-Palette und einen dezenten weißen Punkteregen auf Start- und Sperrfläche.
+Für reduzierte Bewegung gibt es **Odysseus Midnight (ohne Animation)**.
+Die Auswahl gilt sofort und wird in `settings.json` gespeichert. Citrix-Portale
+und HTML5-Sitzungen behalten ihre eigene Darstellung.
 
 ## Erste Verbindung
 
@@ -206,9 +218,14 @@ weist OmaBridge auf die nötige HTML5-Auswahl im Portal hin.
   sind keine isolierte Sicherheitsgrenze.
 - Automatisierung läuft im isolierten JavaScript-Kontext. Die Portal-Felder erhalten
   die zur Anmeldung benötigten Werte; der TOTP-Schlüssel wird nie in das Portal injiziert.
-- ICA-Downloads werden nur von der gespeicherten Portal-Origin angenommen, geprüft
-  und mit zufälligem Dateinamen in einem privaten temporären Verzeichnis gespeichert.
-  Workspace erhält ausschließlich den Dateipfad als Argument, keine Shell-Befehle.
+- ICA-Downloads von der gespeicherten Portal-Origin werden direkt angenommen. Bei
+  einem anderen HTTPS-Host zeigt OmaBridge die genaue Adresse und fragt, ob sie
+  für diese Site dauerhaft erlaubt werden soll. Andere Adressen bleiben gesperrt.
+  Erlaubte Adressen stehen als exakte Origins in `sites.json`; sie werden beim
+  Ändern der Portal-Origin zurückgesetzt. Auch vom Portal erzeugte `blob:`- und
+  `data:`-Downloads werden geprüft. ICA-Dateien werden mit zufälligem Dateinamen
+  in einem privaten temporären Verzeichnis gespeichert.
+  Workspace erhält den Dateipfad über seine `-file`-Schnittstelle, keine Shell-Befehle.
   `RemoveICAFile=yes`, Prozess-Ende, Fünf-Minuten-Frist und App-Ende räumen Tickets auf.
 - Chromium-Sandbox und Zertifikatsprüfung bleiben eingeschaltet. Portal-Konsolenlogs
   werden unterdrückt. Es gibt keine Telemetrie oder Fernspeicherung durch OmaBridge.

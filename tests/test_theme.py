@@ -1,5 +1,5 @@
 from PySide6.QtGui import QPalette
-from omabridge.theme import palette, stylesheet, ThemeWatcher
+from omabridge.theme import midnight_palette, palette, stylesheet, ThemeWatcher
 from omabridge.ui import MainWindow, SettingsDialog, STYLE
 from omabridge.storage import SiteStore
 from test_browser import wait_for
@@ -65,3 +65,27 @@ def test_missing_theme_uses_fallback(app, tmp_path):
     watcher.refresh()
     assert watcher.colors == palette()
     watcher.deleteLater()
+
+
+def test_midnight_changes_palette_and_rain_without_reopening_portal(app, tmp_path, monkeypatch):
+    from omabridge.browser import PortalSession
+    from omabridge.models import Site
+    store = SiteStore(tmp_path)
+    store.save([Site('Demo', 'https://citrix.test')])
+    monkeypatch.setattr(PortalSession, 'start', lambda self: self.timer.stop())
+    window = MainWindow(store, MemoryVault())
+    window.show()
+    window.connect_site()
+    wait_for(app, lambda: not window.jobs)
+    session = window.sessions[window.sites[0].id]
+    window.change_appearance('midnight')
+    assert window.theme_colors['background'] == midnight_palette()['background']
+    assert window.empty._enabled and window.lock_page._enabled
+    assert window.preferences.load_appearance() == 'midnight'
+    assert window.sessions[window.sites[0].id] is session
+    window.change_appearance('midnight-still')
+    assert window.theme_colors['background'] == midnight_palette()['background']
+    assert not window.empty._enabled and not window.lock_page._enabled
+    window.change_appearance('omarchy')
+    assert not window.empty._enabled and not window.lock_page._enabled
+    window.close()

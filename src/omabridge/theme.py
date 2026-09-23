@@ -47,6 +47,16 @@ def palette(values=None):
                 warning_fg=mix(fg, warning, .4), warning_border=mix(bg, warning, .65))
 
 
+def midnight_palette():
+    # Odysseus Midnight's base colors, mapped onto OmaBridge's Qt controls.
+    return dict(background='#0d1117', foreground='#c9d1d9', accent='#f85149',
+                surface='#161b22', raised='#21262d', hover='#30363d',
+                border='#30363d', muted='#8b949e', disabled='#6e7681',
+                accent_hover='#ff6a61', on_accent='#0d1117',
+                warning_bg='#382b18', warning_fg='#e3b341',
+                warning_border='#9e6a03')
+
+
 def stylesheet(template, colors):
     replacements = {
         '#151f2c': 'background', '#dce7f5': 'foreground', '#9bafc5': 'muted',

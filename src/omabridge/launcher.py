@@ -12,6 +12,13 @@ from pathlib import Path
 def workspace_executable() -> str | None:
     found = shutil.which("wfica")
     if found:
+        wrapper = Path(found).resolve().with_name("wfica.sh")
+        if wrapper.is_file() and os.access(wrapper, os.X_OK):
+            return str(wrapper)
+    wrapper = Path("/opt/Citrix/ICAClient/wfica.sh")
+    if wrapper.is_file() and os.access(wrapper, os.X_OK):
+        return str(wrapper)
+    if found:
         return found
     path = Path("/opt/Citrix/ICAClient/wfica")
     return str(path) if path.is_file() and os.access(path, os.X_OK) else None
@@ -45,8 +52,15 @@ def launch_workspace(path: Path):
     if not executable:
         raise ValueError(tr("Citrix Workspace is missing: wfica is not installed. Install Workspace or choose browser mode."))
     prepare_ica(path)
-    return subprocess.Popen([executable, str(path)], stdin=subprocess.DEVNULL,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    if Path(executable).name == "wfica.sh":
+        command = [executable, str(path)]
+    else:
+        command = [executable, "-file", str(path)]
+    environment = os.environ.copy()
+    if Path(executable).name != "wfica.sh":
+        environment["ICAROOT"] = str(Path(executable).resolve().parent)
+    return subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL, start_new_session=True, env=environment)
 
 
 def download_directory() -> tempfile.TemporaryDirectory:

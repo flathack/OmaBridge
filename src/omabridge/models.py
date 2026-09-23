@@ -37,6 +37,7 @@ class Site:
     mode: str = "workspace"
     auto_login: bool = True
     selectors: dict[str, str] = field(default_factory=dict)
+    ica_origins: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         self.name = self.name.strip()
@@ -54,6 +55,16 @@ class Site:
         if (not isinstance(self.selectors, dict) or set(self.selectors) - allowed
                 or any(not isinstance(v, str) or len(v) > 1000 for v in self.selectors.values())):
             raise ValueError(tr("Invalid form selectors."))
+        if (not isinstance(self.ica_origins, list) or len(self.ica_origins) > 20
+                or any(not isinstance(item, str) or len(item) > 255 for item in self.ica_origins)):
+            raise ValueError(tr("Invalid ICA download origins."))
+        try:
+            if any(origin(item) != item for item in self.ica_origins):
+                raise ValueError(tr("Invalid ICA download origins."))
+        except ValueError as error:
+            raise ValueError(tr("Invalid ICA download origins.")) from error
+        if len(set(self.ica_origins)) != len(self.ica_origins):
+            raise ValueError(tr("Invalid ICA download origins."))
 
     def public_dict(self):
         return asdict(self)

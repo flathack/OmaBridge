@@ -36,6 +36,19 @@ def test_invalid_preferences_are_not_overwritten(tmp_path):
     assert 'other' in store.path.read_text()
 
 
+def test_appearance_persists_without_changing_language(tmp_path):
+    store = PreferencesStore(tmp_path)
+    assert store.load_appearance() == 'omarchy'
+    store.save('de')
+    store.save_appearance('midnight')
+    assert store.load() == 'de'
+    assert store.load_appearance() == 'midnight'
+    store.save('en')
+    assert store.load_appearance() == 'midnight'
+    with pytest.raises(ValueError, match='Unsupported appearance'):
+        store.save_appearance('unknown')
+
+
 def test_bar_state_shares_language_without_credentials(tmp_path):
     directory = tmp_path / 'omabridge'
     sites = SiteStore(directory)

@@ -1,10 +1,12 @@
 from .i18n import tr, language, set_language, retranslate, apply_qt_language, ENGLISH
 from .preferences import PreferencesStore
 from .app_lock import AppLockStore
-from .theme import ThemeWatcher, stylesheet, qt_palette
+from .theme import ThemeWatcher, midnight_palette, stylesheet, qt_palette
+from .rain import RainBackground
 
 from dataclasses import replace
 from pathlib import Path
+import shutil
 from uuid import uuid4
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Qt, Signal, QSize, QUrl
@@ -211,6 +213,8 @@ class SiteDialog(QDialog):
                         auto_login=self.auto.isChecked(), selectors={k: w.text().strip() for k, w in self.selectors.items() if w.text().strip()})
             if self.site:
                 data["id"] = self.site.id
+                if origin(self.site.url) == origin(data["url"]):
+                    data["ica_origins"] = self.site.ica_origins
             site = Site(**data)
             credentials = Credentials(self.username.text().strip(), self.password.text(),
                                       self.totp.text().strip() if self.store_totp.isChecked() else "")
@@ -272,9 +276,16 @@ class SettingsDialog(QDialog):
         self.language.setCurrentIndex(self.language.findData(language()))
         self.language.setAccessibleName(tr("Language"))
         form.addRow(tr("Language"), self.language)
+        self.appearance = QComboBox()
+        self.appearance.addItem(tr("Omarchy colors"), "omarchy")
+        self.appearance.addItem(tr("Odysseus Midnight"), "midnight")
+        self.appearance.addItem(tr("Odysseus Midnight (still)"), "midnight-still")
+        self.appearance.setCurrentIndex(self.appearance.findData(getattr(parent, "appearance", "omarchy")))
+        self.appearance.setAccessibleName(tr("Appearance"))
+        form.addRow(tr("Appearance"), self.appearance)
         layout.addLayout(form)
         layout.addWidget(label(tr("Applies immediately. Open Citrix sessions stay connected."), "muted"))
-        layout.addWidget(label(tr("Colors follow your Omarchy theme and update live."), "muted"))
+        layout.addWidget(label(tr("Midnight adds a subtle animated rain to OmaBridge's own screens. Citrix pages keep their own design."), "muted"))
         self.lock_enabled = QCheckBox(tr("Require a PIN or password when opening OmaBridge"))
         self.lock_enabled.setChecked(bool(self.lock_config))
         layout.addWidget(self.lock_enabled)
@@ -341,6 +352,7 @@ class MainWindow(QMainWindow):
         self.store = store or SiteStore()
         self.preferences = PreferencesStore(self.store.directory)
         set_language(self.preferences.load())
+        self.appearance = self.preferences.load_appearance()
         apply_qt_language()
         self.lock_store = AppLockStore(self.store.directory)
         self.lock_config = self.lock_store.load()
@@ -349,6 +361,7 @@ class MainWindow(QMainWindow):
         self.pending_site_timer = QTimer(self)
         self.pending_site_timer.setInterval(100)
         self.pending_site_timer.timeout.connect(self.open_pending_site)
+        self.pending_profile_deletions = set()
         self.session_generation = 0
         self.vault = vault or SecretVault()
         self.sites = [] if self.locked else self.store.load()
@@ -438,7 +451,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.toolbar)
         self.stack = QStackedWidget()
         self.stack.setContentsMargins(0, 0, 0, 0)
-        self.empty = QWidget()
+        self.empty = RainBackground()
         empty_layout = QVBoxLayout(self.empty)
         empty_layout.setContentsMargins(24, 24, 24, 24)
         empty_layout.addStretch()
@@ -467,9 +480,18 @@ class MainWindow(QMainWindow):
             self.unlock_secret.setFocus()
 
     def apply_theme(self, colors):
+        if self.appearance.startswith('midnight'):
+            colors = midnight_palette()
         self.theme_colors = colors
         self.setPalette(qt_palette(colors))
-        self.setStyleSheet(stylesheet(STYLE, colors))
+        style = STYLE.replace("font-family: monospace;", "font-family: 'JetBrains Mono';") if self.appearance.startswith('midnight') else STYLE
+        style = stylesheet(style, colors)
+        if self.appearance.startswith('midnight'):
+            style += '\nQWidget#midnightBackdrop { background: transparent; }'
+            style += '\nQWidget#lockPanel { background: #161b22; border: 1px solid #30363d; border-radius: 12px; }'
+        self.setStyleSheet(style)
+        for page in (self.empty, self.lock_page):
+            page.set_rain_enabled(self.appearance == 'midnight')
         # Explicit local foreground keeps text-only navigation glyphs visible in Qt.
         for control in self.findChildren(QToolButton):
             control.setStyleSheet("QToolButton:enabled { color: " + colors['foreground'] + "; }")
@@ -537,10 +559,11 @@ class MainWindow(QMainWindow):
         self.tabs.setTabButton(index, QTabBar.ButtonPosition.RightSide, control)
 
     def build_lock_page(self):
-        self.lock_page = QWidget()
+        self.lock_page = RainBackground()
         layout = QVBoxLayout(self.lock_page)
         layout.addStretch()
         panel = QWidget()
+        panel.setObjectName('lockPanel')
         panel.setMinimumWidth(360)
         panel.setMaximumWidth(440)
         form = QVBoxLayout(panel)
@@ -653,17 +676,19 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             value = dialog.language.currentData()
+            appearance = dialog.appearance.currentData()
             if dialog.lock_changed():
                 enabled, kind = dialog.lock_enabled.isChecked(), dialog.lock_kind.currentData()
                 current, secret = dialog.current_secret.text(), dialog.new_secret.text()
-                self.save_lock_settings(enabled, kind, current, secret, value)
+                self.save_lock_settings(enabled, kind, current, secret, value, appearance)
             else:
                 self.change_language(value)
+                self.change_appearance(appearance)
         for field in (dialog.current_secret, dialog.new_secret, dialog.confirm_secret):
             field.clear()
         dialog.deleteLater()
 
-    def save_lock_settings(self, enabled, kind, current, secret, selected_language):
+    def save_lock_settings(self, enabled, kind, current, secret, selected_language, selected_appearance=None):
         if self.locked or self.mutating:
             return
         def save():
@@ -680,8 +705,20 @@ class MainWindow(QMainWindow):
                 return
             self.lock_config = config
             self.change_language(selected_language)
+            self.change_appearance(selected_appearance or self.appearance)
             self.set_controls()
         self.run_job(save, done)
+
+    def change_appearance(self, value):
+        if self.locked or self.mutating or value == self.appearance:
+            return
+        try:
+            self.preferences.save_appearance(value)
+        except (OSError, ValueError) as error:
+            self.show_error(error)
+            return
+        self.appearance = value
+        self.apply_theme(self.theme.colors or self.theme_colors)
 
     def change_language(self, value):
         if self.locked or self.mutating:
@@ -956,7 +993,7 @@ class MainWindow(QMainWindow):
             if error:
                 self.show_error(error)
                 return
-            self.remove_session(updated.id)
+            self.remove_session(updated.id, remove_browser_data=bool(site and origin(site.url) != origin(updated.url)))
             self.sites = new_sites
             if site and site.url != updated.url:
                 self.favicons.remove(site.id)
@@ -996,7 +1033,7 @@ class MainWindow(QMainWindow):
             if error:
                 self.show_error(error)
                 return
-            self.remove_session(site.id)
+            self.remove_session(site.id, remove_browser_data=True)
             self.sites = new_sites
             self.favicons.remove(site.id)
             self.refresh()
@@ -1024,11 +1061,49 @@ class MainWindow(QMainWindow):
         self.refresh(site.id)
         self.status.setText(tr("Launch mode saved. If the portal has already selected a client, change its mode there too."))
 
+    def approve_ica_origin(self, site, download_origin):
+        if self.locked or self.mutating or site.id not in {item.id for item in self.sites}:
+            return False
+        box = QMessageBox(self)
+        box.setWindowTitle(tr("Allow ICA download address?"))
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setTextFormat(Qt.TextFormat.PlainText)
+        box.setText(tr("The Citrix portal {site} is downloading an ICA file from:\n{address}\n\nAllow this HTTPS address for future ICA launches from this site?",
+                       site=site.name, address=download_origin))
+        allow = box.addButton(tr("Allow address"), QMessageBox.ButtonRole.AcceptRole)
+        block = box.addButton(tr("Block download"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(block)
+        box.exec()
+        if box.clickedButton() is not allow:
+            return False
+        current = next((item for item in self.sites if item.id == site.id), None)
+        if current is None or origin(current.url) != origin(site.url):
+            return False
+        if download_origin in current.ica_origins:
+            return True
+        updated = replace(current, ica_origins=[*current.ica_origins, download_origin])
+        new_sites = [updated if item.id == site.id else item for item in self.sites]
+        try:
+            self.store.save(new_sites)
+        except (OSError, ValueError) as error:
+            self.show_error(error)
+            return False
+        self.sites = new_sites
+        session = self.sessions.get(site.id)
+        if session:
+            session.site = updated
+        self.status.setText(tr("ICA download address allowed for this site."))
+        return True
+
     def connect_site(self):
         if self.locked or self.mutating:
             return
         site = self.current_site()
         if not site:
+            return
+        if site.id in self.pending_profile_deletions:
+            self.pending_site_id = site.id
+            self.pending_site_timer.start()
             return
         if site.id in self.sessions:
             self.selected(self.tabs.currentIndex())
@@ -1043,14 +1118,16 @@ class MainWindow(QMainWindow):
                 self.show_error(error)
                 return
             try:
-                session = PortalSession(site, credentials, self)
+                session = PortalSession(site, credentials, self, profile_root=self.store.directory / 'browser')
             except ValueError as error:
                 self.show_error(error)
                 return
             self.sessions[site.id] = session
             session.popup_factory = self.open_popup
             session.popup_closer = self.close_popup
+            session.approve_ica_origin = self.approve_ica_origin
             session.message.connect(lambda text: self.show_session_message(site.id, text))
+            session.launch_error.connect(self.show_error)
             session.view.urlChanged.connect(lambda _: self.view_changed(session.view))
             session.view.iconChanged.connect(lambda icon: self.save_portal_favicon(site.id, session.view, icon))
             session.view.loadFinished.connect(lambda _: self.view_changed(session.view))
@@ -1065,7 +1142,8 @@ class MainWindow(QMainWindow):
         if self.locked or not self.pending_site_id:
             self.pending_site_timer.stop()
             return
-        if self.jobs or self.mutating or QApplication.activeModalWidget():
+        if (self.jobs or self.mutating or QApplication.activeModalWidget()
+                or self.pending_site_id in self.pending_profile_deletions):
             return
         site_id, self.pending_site_id = self.pending_site_id, None
         self.pending_site_timer.stop()
@@ -1105,15 +1183,37 @@ class MainWindow(QMainWindow):
         if site and site.id in self.sessions:
             self.sessions[site.id].pause()
 
-    def remove_session(self, site_id):
+    def remove_session(self, site_id, remove_browser_data=False):
         session = self.sessions.get(site_id)
         if session:
+            if remove_browser_data:
+                self.pending_profile_deletions.add(site_id)
+                session.profile.destroyed.connect(
+                    lambda *_: QTimer.singleShot(0, lambda: self.finish_browser_data_removal(site_id)))
             for popup in session.popups[:]:
                 self.close_popup(popup)
             self.sessions.pop(site_id, None)
             self.stack.removeWidget(session)
             session.dispose()
             session.deleteLater()
+        elif remove_browser_data:
+            self.remove_browser_data(site_id)
+
+    def finish_browser_data_removal(self, site_id):
+        try:
+            self.remove_browser_data(site_id)
+        finally:
+            self.pending_profile_deletions.discard(site_id)
+
+    def remove_browser_data(self, site_id):
+        path = self.store.directory / 'browser' / site_id
+        try:
+            if path.is_symlink():
+                path.unlink()
+            elif path.exists():
+                shutil.rmtree(path)
+        except OSError as error:
+            self.show_error(error)
 
     def close_session(self):
         site = self.current_site()

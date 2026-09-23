@@ -1,6 +1,7 @@
 from .i18n import tr
 
 import json
+import os
 import time
 from importlib.resources import files
 from pathlib import Path
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from .launcher import download_directory, launch_workspace
 from .models import Credentials, Site, origin
+from .storage import config_directory
 from .totp import Totp
 
 LOGIN_SCRIPT = files("omabridge").joinpath("assets/login.js").read_text()
@@ -27,6 +29,22 @@ def display_address(url: QUrl) -> str:
     sanitized.setUserName(None)
     sanitized.setPassword(None)
     return sanitized.toString()
+
+
+def ica_source_origin(url: QUrl) -> str | None:
+    """Resolve HTTPS and HTTPS-backed blob downloads without exposing ticket URLs."""
+    if url.scheme() == 'blob':
+        url = QUrl(url.toString().removeprefix('blob:'))
+    if not url.isValid() or url.scheme().lower() != 'https' or not url.host() or url.userInfo():
+        return None
+    host = url.host()
+    host = f'[{host}]' if ':' in host and not host.startswith('[') else host
+    port = url.port(-1)
+    address = f'https://{host}' + (f':{port}' if port != -1 else '')
+    try:
+        return origin(address)
+    except ValueError:
+        return None
 
 
 class PortalPage(QWebEnginePage):
@@ -90,8 +108,9 @@ class PortalPage(QWebEnginePage):
 class PortalSession(QWidget):
     message = Signal(str)
     address = Signal(str)
+    launch_error = Signal(str)
 
-    def __init__(self, site: Site, credentials: Credentials, parent=None):
+    def __init__(self, site: Site, credentials: Credentials, parent=None, profile_root: Path | None = None):
         super().__init__(parent)
         self.site = site
         self.credentials = credentials
@@ -100,6 +119,7 @@ class PortalSession(QWidget):
         self.used_stages: set[str] = set()
         self.popup_factory = None
         self.popup_closer = None
+        self.approve_ica_origin = None
         self.busy = False
         self.deadline = time.monotonic() + 90
         self.auto_enabled = site.auto_login
@@ -108,8 +128,16 @@ class PortalSession(QWidget):
         self.downloads = []
         self.clients = []
         self.temporary = download_directory()
-        # An unnamed profile is off-the-record: no cookies/cache/history on disk.
-        self.profile = QWebEngineProfile(self)
+        profile_root = profile_root or config_directory() / 'browser'
+        profile_path = profile_root / site.id
+        if profile_root.is_symlink() or profile_path.is_symlink():
+            raise ValueError(tr("The browser profile directory must not be a symlink."))
+        profile_path.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(profile_path, 0o700)
+        self.profile = QWebEngineProfile(site.id, self)
+        self.profile.setPersistentStoragePath(str(profile_path / 'storage'))
+        self.profile.setCachePath(str(profile_path / 'cache'))
+        self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies)
         self.profile.setHttpAcceptLanguage("de-DE,de;q=0.9,en;q=0.8")
         self.profile.downloadRequested.connect(self.download)
         self.view = QWebEngineView(self)
@@ -159,7 +187,7 @@ class PortalSession(QWidget):
         if not trusted:
             return
         self.evaluate(MODE_SCRIPT, {"origin": self.expected_origin, "mode": self.site.mode,
-                                   "selector": self.site.selectors.get(self.site.mode, "")}, lambda _: None)
+                                   "selector": self.site.selectors.get(self.site.mode, "")}, self.mode_selected)
         if not self.auto_enabled or time.monotonic() > self.deadline:
             return
         self.busy = True
@@ -168,6 +196,12 @@ class PortalSession(QWidget):
     def login_options(self):
         return {"origin": self.expected_origin, "selectors": self.site.selectors,
                 "passwordSubmitted": any("password" in stage.split("+") for stage in self.used_stages)}
+
+    def mode_selected(self, result):
+        if result == "detecting":
+            self.message.emit(tr("Detecting Citrix Workspace. If the portal asks, choose “Already installed”."))
+        elif result == "selector-error":
+            self.message.emit(tr("Invalid launch mode selector. Correct it in the site settings."))
 
     def probed(self, result):
         if self.disposed:
@@ -247,13 +281,30 @@ class PortalSession(QWidget):
 
     def download(self, request):
         is_ica = request.suggestedFileName().lower().endswith(".ica") or request.mimeType() == "application/x-ica"
-        try:
-            trusted = origin(request.url().toString()) == self.expected_origin
-        except ValueError:
-            trusted = False
+        download_origin = ica_source_origin(request.url())
+        trusted = download_origin == self.expected_origin or download_origin in self.site.ica_origins
+        if request.url().scheme() == 'data' and is_ica:
+            page = request.page()
+            owned = page is self.page or any(view.page() is page for view in self.popups)
+            if owned:
+                try:
+                    source_origin = origin(page.url().toString())
+                    trusted = source_origin == self.expected_origin or source_origin in self.site.ica_origins
+                except ValueError:
+                    pass
+        if download_origin and not trusted and is_ica and self.site.mode == "workspace":
+            # This signal belongs to this site's profile. Some redirected
+            # downloads have no page(), so rely on explicit origin approval.
+            if self.approve_ica_origin:
+                trusted = self.approve_ica_origin(self.site, download_origin)
         if self.disposed or not is_ica or not trusted:
             request.cancel()
-            self.message.emit(tr("Download blocked. OmaBridge only accepts ICA files from the saved portal origin."))
+            scheme = request.url().scheme().lower()
+            scheme = scheme if scheme in {'https', 'http', 'blob', 'data', 'file'} else 'other'
+            error = tr("Download blocked (source: {scheme}). ICA files must come from the saved portal or an allowed HTTPS address.", scheme=scheme)
+            self.message.emit(error)
+            if is_ica and not self.disposed:
+                self.launch_error.emit(error)
             return
         if self.site.mode != "workspace":
             request.cancel()
@@ -281,7 +332,9 @@ class PortalSession(QWidget):
             return
         if request.state() != QWebEngineDownloadRequest.DownloadState.DownloadCompleted:
             path.unlink(missing_ok=True)
-            self.message.emit(tr("ICA download failed or was cancelled. Select the app in the portal again."))
+            error = tr("ICA download failed or was cancelled. Select the app in the portal again.")
+            self.message.emit(error)
+            self.launch_error.emit(error)
             return
         try:
             process = launch_workspace(path)
@@ -290,6 +343,7 @@ class PortalSession(QWidget):
         except (OSError, ValueError) as error:
             path.unlink(missing_ok=True)
             self.message.emit(str(error))
+            self.launch_error.emit(str(error))
 
     def cleanup_clients(self):
         for process, path, started in self.clients[:]:
@@ -298,7 +352,9 @@ class PortalSession(QWidget):
                 path.unlink(missing_ok=True)
                 self.clients.remove((process, path, started))
                 if result not in {None, 0}:
-                    self.message.emit(tr("Citrix Workspace reported a launch error. Check the client installation and connection."))
+                    error = tr("Citrix Workspace reported a launch error. Check the client installation and connection.")
+                    self.message.emit(error)
+                    self.launch_error.emit(error)
 
     def dispose(self):
         if self.disposed:

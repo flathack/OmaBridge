@@ -1,5 +1,6 @@
 import json
 import time
+from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QUrl
@@ -129,13 +130,43 @@ def test_mode_switch_matches_exact_choice_once(app, page):
     assert js(app, page, "document.body.dataset.clicks") == "1"
 
 
+def test_workspace_mode_prefers_installed_and_continues_after_detection(app, page):
+    choices = ('<button onclick="document.body.dataset.detected=1">Detect Workspace</button>'
+               '<button onclick="document.body.dataset.installed=1">Already installed</button>')
+    code = f'{MODE_SCRIPT}({json.dumps({"origin": "https://citrix.test", "mode": "workspace", "selector": ""})})'
+    html(app, page, choices)
+    assert js(app, page, code) == "selected"
+    assert js(app, page, "document.body.dataset.installed") == "1"
+    assert js(app, page, "document.body.dataset.detected") is None
+
+    html(app, page, '<button onclick="document.body.dataset.detected=1">Detect Workspace</button>')
+    assert js(app, page, code) == "detecting"
+    assert js(app, page, code) == "waiting"
+    assert js(app, page, "document.body.dataset.detected") == "1"
+    js(app, page, "window.__omabridgeDetectClickedAt -= 15001")
+    assert js(app, page, code) == "detecting"
+    js(app, page, "document.body.innerHTML='<button onclick=\"document.body.dataset.installed=1\">Already installed</button>'")
+    assert js(app, page, code) == "selected"
+    assert js(app, page, "document.body.dataset.installed") == "1"
+
+
+def test_workspace_mode_detects_german_storefront_button(app, page):
+    html(app, page, '<button onclick="document.body.dataset.detected=1">Citrix Workspace-App ermitteln</button>')
+    code = f'{MODE_SCRIPT}({json.dumps({"origin": "https://citrix.test", "mode": "workspace", "selector": ""})})'
+    assert js(app, page, code) == "detecting"
+    assert js(app, page, "document.body.dataset.detected") == "1"
+
+
 def test_session_retry_budget_survives_reload_and_profiles_isolated(app):
     site = Site("Test", "https://citrix.test/Citrix/StoreWeb/")
     session = PortalSession(site, Credentials("demo", "password", "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"))
     other = PortalSession(Site("Other", "https://other.test"), Credentials())
     session.timer.stop()
     other.timer.stop()
-    assert session.profile.isOffTheRecord()
+    assert not session.profile.isOffTheRecord()
+    assert session.profile.persistentCookiesPolicy() == QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies
+    assert session.profile.persistentStoragePath().endswith(site.id + '/storage')
+    assert Path(session.profile.persistentStoragePath()).parent.stat().st_mode & 0o777 == 0o700
     assert other.profile != session.profile
     # Deterministic code period, avoiding the deliberate near-expiry wait.
     class FixedTotp:

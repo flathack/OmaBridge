@@ -56,7 +56,8 @@ def test_origin_normalization_and_port():
 
 def test_sites_roundtrip_private_atomic(tmp_path):
     store = SiteStore(tmp_path / "config")
-    sites = [Site("Büro", "https://citrix.test/Citrix/StoreWeb/"), Site("Kunde", "https://other.test", mode="browser")]
+    sites = [Site("Büro", "https://citrix.test/Citrix/StoreWeb/", ica_origins=["https://downloads.test"]),
+             Site("Kunde", "https://other.test", mode="browser")]
     store.save(sites)
     assert store.load() == sites
     assert store.path.stat().st_mode & 0o777 == 0o600
@@ -64,6 +65,13 @@ def test_sites_roundtrip_private_atomic(tmp_path):
     data = store.path.read_text()
     assert '"password"' not in data and '"totp"' not in data and '"username"' not in data
     assert len(list(store.directory.iterdir())) == 1
+
+
+@pytest.mark.parametrize("address", ["http://downloads.test", "https://downloads.test/path",
+    "https://downloads.test?ticket=secret", "https://user@downloads.test", "https://downloads.test/"])
+def test_invalid_ica_download_origins(address):
+    with pytest.raises(ValueError, match="Invalid ICA download origins"):
+        Site("Test", "https://citrix.test", ica_origins=[address])
 
 
 def test_save_failure_keeps_previous(tmp_path, monkeypatch):
@@ -124,12 +132,23 @@ def test_workspace_spawn_argv(tmp_path, monkeypatch):
     import omabridge.launcher as launcher
     path = tmp_path / "ticket with spaces.ica"
     path.write_text("[WFClient]\n[ApplicationServers]\nDesktop=\n")
-    monkeypatch.setattr(launcher, "workspace_executable", lambda: "/opt/Citrix/ICAClient/wfica")
+    monkeypatch.setattr(launcher, "workspace_executable", lambda: "/opt/Citrix/ICAClient/wfica.sh")
     calls = []
     monkeypatch.setattr(launcher.subprocess, "Popen", lambda args, **kwargs: calls.append((args, kwargs)))
     launcher.launch_workspace(path)
-    assert calls[0][0] == ["/opt/Citrix/ICAClient/wfica", str(path)]
+    assert calls[0][0] == ["/opt/Citrix/ICAClient/wfica.sh", str(path)]
     assert "shell" not in calls[0][1]
+    monkeypatch.setattr(launcher, "workspace_executable", lambda: "/opt/Citrix/ICAClient/wfica")
+    launcher.launch_workspace(path)
+    assert calls[1][0] == ["/opt/Citrix/ICAClient/wfica", "-file", str(path)]
+    assert calls[1][1]["env"]["ICAROOT"] == "/opt/Citrix/ICAClient"
+
+
+@pytest.mark.skipif(not Path('/opt/Citrix/ICAClient/wfica.sh').is_file(),
+                    reason='Requires a local Citrix Workspace installation')
+def test_workspace_uses_vendor_wrapper_when_available():
+    from omabridge.launcher import workspace_executable
+    assert workspace_executable() == "/opt/Citrix/ICAClient/wfica.sh"
 
 
 def test_site_never_accepts_url_tickets():

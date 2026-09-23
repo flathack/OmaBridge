@@ -98,6 +98,60 @@ def test_failed_config_write_rolls_back_new_secret(app, tmp_path, monkeypatch):
     window.close()
 
 
+def test_ica_address_approval_is_site_scoped_and_persistent(app, tab_window):
+    window = tab_window
+    site = window.sites[0]
+    def approve():
+        box = QApplication.activeModalWidget()
+        assert isinstance(box, QMessageBox)
+        assert "https://downloads.test" in box.text()
+        next(button for button in box.buttons() if box.buttonRole(button) == QMessageBox.ButtonRole.AcceptRole).click()
+    QTimer.singleShot(0, approve)
+    assert window.approve_ica_origin(site, "https://downloads.test")
+    assert window.store.load()[0].ica_origins == ["https://downloads.test"]
+    assert window.store.load()[1].ica_origins == []
+
+
+def test_ica_address_rejection_does_not_save(app, tab_window):
+    window = tab_window
+    QTimer.singleShot(0, lambda: QApplication.activeModalWidget().reject())
+    assert not window.approve_ica_origin(window.sites[0], "https://downloads.test")
+    assert window.store.load()[0].ica_origins == []
+
+
+def test_removing_site_clears_persistent_browser_profile(app, tab_window):
+    window = tab_window
+    site = window.sites[0]
+    window.connect_site()
+    wait_for(app, lambda: site.id in window.sessions)
+    profile = window.store.directory / 'browser' / site.id
+    assert profile.is_dir()
+    QTimer.singleShot(0, lambda: QApplication.activeModalWidget().done(QMessageBox.StandardButton.Yes))
+    window.delete_site()
+    wait_for(app, lambda: site.id not in window.sessions)
+    wait_for(app, lambda: not profile.exists())
+
+
+def test_reopening_site_waits_for_old_browser_profile_removal(app, tab_window):
+    window = tab_window
+    site = window.sites[0]
+    window.connect_site()
+    wait_for(app, lambda: site.id in window.sessions)
+    profile = window.store.directory / 'browser' / site.id
+    (profile / 'old-session').write_text('marker')
+
+    window.remove_session(site.id, remove_browser_data=True)
+    window.connect_site()
+    assert site.id in window.pending_profile_deletions
+    assert site.id not in window.sessions
+    assert window.pending_site_id == site.id
+
+    wait_for(app, lambda: site.id in window.sessions)
+    assert profile.is_dir()
+    assert not (profile / 'old-session').exists()
+    assert site.id not in window.pending_profile_deletions
+
+
 def test_invalid_totp_prevents_saving(app):
     dialog = SiteDialog(None)
     dialog.name.setText("Büro")
@@ -107,6 +161,20 @@ def test_invalid_totp_prevents_saving(app):
     dialog.validate()
     assert dialog.value is None
     assert dialog.error.text()
+    dialog.close()
+
+
+def test_edit_site_preserves_only_relevant_ica_addresses(app):
+    site = Site("Test", "https://citrix.test/Store", ica_origins=["https://downloads.test"])
+    dialog = SiteDialog(None, site)
+    dialog.url.setText("https://citrix.test/NewStore")
+    dialog.validate()
+    assert dialog.value[0].ica_origins == ["https://downloads.test"]
+    dialog.close()
+    dialog = SiteDialog(None, site)
+    dialog.url.setText("https://other.test")
+    dialog.validate()
+    assert dialog.value[0].ica_origins == []
     dialog.close()
 
 

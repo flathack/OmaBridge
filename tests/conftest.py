@@ -15,6 +15,11 @@ def reset_language():
     set_language("en")
 
 
+@pytest.fixture(autouse=True)
+def isolated_browser_profiles(tmp_path, monkeypatch):
+    monkeypatch.setenv('XDG_CONFIG_HOME', str(tmp_path / 'xdg-config'))
+
+
 @pytest.fixture(scope="session")
 def app():
     application = QApplication.instance() or QApplication([])
