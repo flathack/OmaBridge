@@ -25,7 +25,18 @@ Ui.BarWidget {
         passwordInput.clear()
         unlockError = ""
         sites = []
-        if (popupOpen) refreshSites()
+        if (popupOpen) {
+            refreshSites()
+            focusPasswordInput()
+        }
+    }
+    onLockedChanged: focusPasswordInput()
+    function focusPasswordInput() {
+        if (!popupOpen || !locked) return
+        Qt.callLater(function() {
+            if (root.popupOpen && root.locked && passwordInput.enabled)
+                passwordInput.forceActiveFocus()
+        })
     }
     function close() { popupOpen = false }
     function applyState(parsed) {
@@ -174,6 +185,7 @@ Ui.BarWidget {
                 placeholderText: root.t("PIN or password", "PIN oder Passwort")
                 Accessible.name: placeholderText
                 foreground: root.bar ? root.bar.foreground : "white"
+                onEnabledChanged: if (enabled) root.focusPasswordInput()
                 onAccepted: root.unlock()
             }
             Ui.Button {
